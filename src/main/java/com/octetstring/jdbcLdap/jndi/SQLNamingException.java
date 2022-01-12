@@ -1,152 +1,145 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*     */ package com.octetstring.jdbcLdap.jndi;
+/*     */ 
+/*     */ import com.novell.ldap.LDAPException;
+/*     */ import java.io.PrintStream;
+/*     */ import java.io.PrintWriter;
+/*     */ import java.net.MalformedURLException;
+/*     */ import java.sql.SQLException;
+/*     */ import javax.naming.NamingException;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class SQLNamingException
+/*     */   extends SQLException
+/*     */ {
+/*     */   Exception e;
+/*     */   
+/*     */   public SQLNamingException(NamingException e) {
+/*  43 */     this.e = e;
+/*     */   }
+/*     */   
+/*     */   public SQLNamingException(LDAPException e) {
+/*  47 */     this.e = (Exception)e;
+/*     */   }
+/*     */   
+/*     */   public SQLNamingException(MalformedURLException e) {
+/*  51 */     this.e = e;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public SQLNamingException(Exception e1) {
+/*  59 */     this.e = e1;
+/*     */   }
+/*     */   
+/*     */   protected Object clone() throws CloneNotSupportedException {
+/*  63 */     return super.clone();
+/*     */   }
+/*     */   
+/*     */   public boolean equals(Object obj) {
+/*  67 */     return super.equals(obj);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public Throwable fillInStackTrace() {
+/*  77 */     return super.fillInStackTrace();
+/*     */   }
+/*     */   
+/*     */   public Throwable getCause() {
+/*  81 */     return this.e.getCause();
+/*     */   }
+/*     */   
+/*     */   public String getLocalizedMessage() {
+/*  85 */     return this.e.getLocalizedMessage();
+/*     */   }
+/*     */   
+/*     */   public String getMessage() {
+/*  89 */     return this.e.getMessage();
+/*     */   }
+/*     */   
+/*     */   public StackTraceElement[] getStackTrace() {
+/*  93 */     return this.e.getStackTrace();
+/*     */   }
+/*     */   
+/*     */   public Throwable initCause(Throwable throwable) {
+/*  97 */     return this.e.initCause(throwable);
+/*     */   }
+/*     */   
+/*     */   public void printStackTrace() {
+/* 101 */     this.e.printStackTrace();
+/*     */   }
+/*     */   
+/*     */   public void printStackTrace(PrintStream printStream) {
+/* 105 */     this.e.printStackTrace(printStream);
+/*     */   }
+/*     */   
+/*     */   public void printStackTrace(PrintWriter printWriter) {
+/* 109 */     this.e.printStackTrace(printWriter);
+/*     */   }
+/*     */   
+/*     */   public void setStackTrace(StackTraceElement[] stackTraceElement) {
+/* 113 */     this.e.setStackTrace(stackTraceElement);
+/*     */   }
+/*     */   
+/*     */   public int getErrorCode() {
+/* 117 */     if (this.e instanceof LDAPException) {
+/* 118 */       return ((LDAPException)this.e).getResultCode();
+/*     */     }
+/* 120 */     return 0;
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public SQLException getNextException() {
+/* 125 */     return this;
+/*     */   }
+/*     */   
+/*     */   public String getSQLState() {
+/* 129 */     return "ERROR";
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public void setNextException(SQLException sQLException) {}
+/*     */ 
+/*     */   
+/*     */   public Exception getNamingException() {
+/* 137 */     return this.e;
+/*     */   }
+/*     */ }
 
-/*
- * SQLNamingException.java
- *
- * Created on March 10, 2002, 3:35 PM
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/jndi/SQLNamingException.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-
-package com.octetstring.jdbcLdap.jndi;
-
-import java.sql.*;
-import javax.naming.*;
-import com.novell.ldap.util.*;
-import com.novell.ldap.*;
-
-import java.io.FileNotFoundException;
-import java.net.*;
-
-/**
- *Translates a JndiException to a SQLException
- *@author Marc Boorshtein, OctetString
- * @version 
- */
-
-public class SQLNamingException extends java.sql.SQLException {
-	/* (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
-	
-    Exception e;
-    
-    public String toString() {
-    	if (e instanceof LDAPException) {
-    		LDAPException le = (LDAPException) e;
-    		return le.toString() + " -- " + le.getLDAPErrorMessage();
-    	} else {
-    		return e.toString();
-    	}
-	}
-    
-    /** Creates new SQLNamingExcepton */
-    public SQLNamingException(NamingException e) {
-        this.e = e;
-    }
-    
-    public SQLNamingException(LDAPException e) {
-    	this.e = e;
-    }
-    
-    public SQLNamingException(MalformedURLException e) {
-    	this.e = e;
-    }
-
-    /**
-	 * @param e1
-	 */
-	public SQLNamingException(Exception e1) {
-		
-		this.e = e1;
-	}
-
-	protected java.lang.Object clone() throws java.lang.CloneNotSupportedException {
-        return super.clone();
-    }
-    
-    public boolean equals(java.lang.Object obj) {
-        return super.equals(obj);
-    }
-    
-    
-    
-    
-    
-    
-    
-    public java.lang.Throwable fillInStackTrace() {
-        return super.fillInStackTrace();
-    }
-    
-    public java.lang.Throwable getCause() {
-        return e.getCause();
-    }
-    
-    public java.lang.String getLocalizedMessage() {
-        return e.getLocalizedMessage();
-    }
-    
-    public java.lang.String getMessage() {
-        return e.getMessage();
-    }
-    
-    public java.lang.StackTraceElement[] getStackTrace() {
-        return e.getStackTrace();
-    }
-    
-    public java.lang.Throwable initCause(java.lang.Throwable throwable) {
-        return e.initCause(throwable);
-    }
-    
-    public void printStackTrace() {
-        e.printStackTrace();
-    }
-    
-    public void printStackTrace(java.io.PrintStream printStream) {
-        e.printStackTrace(printStream);
-    }
-    
-    public void printStackTrace(java.io.PrintWriter printWriter) {
-        e.printStackTrace(printWriter);
-    }
-    
-    public void setStackTrace(java.lang.StackTraceElement[] stackTraceElement) {
-        e.setStackTrace(stackTraceElement);
-    }
-    
-    public int getErrorCode() {
-    		if (e instanceof LDAPException) {
-    			return ((LDAPException) e).getResultCode();
-    		} else {
-    			return 0;
-    		}
-    }
-    
-    public java.sql.SQLException getNextException() {
-        return this;
-    }
-    
-    public java.lang.String getSQLState() {
-        return "ERROR";
-    }
-    
-    public void setNextException(java.sql.SQLException sQLException) {
-        
-    }
-    
-    public Exception getNamingException() {
-    	return this.e;
-    }
-    
-}

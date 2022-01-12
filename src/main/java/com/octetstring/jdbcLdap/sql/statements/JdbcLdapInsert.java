@@ -1,381 +1,388 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*     */ package com.octetstring.jdbcLdap.sql.statements;
+/*     */ 
+/*     */ import com.novell.ldap.LDAPDN;
+/*     */ import com.octetstring.jdbcLdap.backend.DirectoryInsert;
+/*     */ import com.octetstring.jdbcLdap.jndi.JndiLdapConnection;
+/*     */ import com.octetstring.jdbcLdap.sql.SqlStore;
+/*     */ import com.octetstring.jdbcLdap.util.AddPattern;
+/*     */ import com.octetstring.jdbcLdap.util.Pair;
+/*     */ import com.octetstring.jdbcLdap.util.TableDef;
+/*     */ import java.sql.SQLException;
+/*     */ import java.util.HashMap;
+/*     */ import java.util.Iterator;
+/*     */ import java.util.LinkedList;
+/*     */ import java.util.Set;
+/*     */ import java.util.StringTokenizer;
+/*     */ import javax.naming.directory.DirContext;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class JdbcLdapInsert
+/*     */   extends JdbcLdapSqlAbs
+/*     */   implements JdbcLdapSql
+/*     */ {
+/*     */   static final String INSERT_INTO = "insert into";
+/*     */   static final char LPAR = '(';
+/*     */   static final char RPAR = ')';
+/*     */   static final String QMARK = "?";
+/*     */   static final String COMMA = ",";
+/*     */   static final String EQUALS = "=";
+/*     */   static final char QUOTE = '"';
+/*     */   String dn;
+/*     */   String[] fields;
+/*     */   String[] dnFields;
+/*     */   LinkedList fieldsMap;
+/*     */   String sql;
+/*     */   SqlStore store;
+/*     */   String[] vals;
+/*     */   int[] offset;
+/*     */   DirectoryInsert insert;
+/*     */   private Set dontAdd;
+/*     */   private String defOC;
+/*     */   
+/*     */   public void init(JndiLdapConnection con, String SQL) throws SQLException {
+/* 105 */     this.con = con;
+/* 106 */     this.insert = (DirectoryInsert)con.getImplClasses().get("INSERT");
+/*     */ 
+/*     */     
+/* 109 */     String tmpSQL = SQL.toLowerCase();
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 116 */     this.con = con;
+/*     */ 
+/*     */     
+/* 119 */     int begin = tmpSQL.indexOf("insert into");
+/* 120 */     begin += "insert into".length();
+/* 121 */     int end = tmpSQL.indexOf('(');
+/*     */     
+/* 123 */     String tmp = SQL.substring(begin, end);
+/* 124 */     this.dn = tmp.trim();
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 129 */     TableDef def = null;
+/* 130 */     if (con != null) {
+/* 131 */       def = (TableDef)con.getTableDefs().get(this.dn);
+/*     */     }
+/* 133 */     if (def == null) {
+/* 134 */       LinkedList linkedList = explodeDN(this.dn);
+/* 135 */       parseCtx(linkedList);
+/*     */     } 
+/*     */     
+/* 138 */     this.fieldsMap = new LinkedList();
+/*     */ 
+/*     */     
+/* 141 */     begin = end + 1;
+/* 142 */     end = tmpSQL.indexOf(')', begin);
+/* 143 */     tmp = SQL.substring(begin, end);
+/*     */     
+/* 145 */     StringTokenizer tok = new StringTokenizer(tmp, ",", false);
+/* 146 */     this.fields = new String[tok.countTokens()];
+/*     */     
+/* 148 */     HashMap addPattern = null;
+/*     */     
+/* 150 */     if (def != null) {
+/* 151 */       addPattern = def.getAddPatterns();
+/*     */     }
+/*     */     int i;
+/* 154 */     for (i = 0; tok.hasMoreTokens(); i++) {
+/* 155 */       this.fields[i] = tok.nextToken();
+/* 156 */       if (addPattern != null) {
+/* 157 */         Object o = addPattern.get(this.fields[i]);
+/* 158 */         if (o != null) {
+/* 159 */           if (o instanceof HashMap) {
+/* 160 */             addPattern = (HashMap)o;
+/*     */           } else {
+/* 162 */             AddPattern pat = (AddPattern)o;
+/* 163 */             this.dn = pat.getAddPattern() + "," + def.getBase();
+/* 164 */             this.dontAdd = pat.getNotToAdd();
+/* 165 */             this.defOC = pat.getDefaultOC();
+/*     */           } 
+/*     */         }
+/*     */       } 
+/*     */     } 
+/*     */ 
+/*     */     
+/* 172 */     if (def != null) {
+/* 173 */       LinkedList linkedList = explodeDN(this.dn);
+/* 174 */       parseCtx(linkedList);
+/*     */     } 
+/*     */ 
+/*     */ 
+/*     */     
+/* 179 */     begin = end + 1;
+/* 180 */     begin = tmpSQL.indexOf('(', begin) + 1;
+/* 181 */     end = tmpSQL.indexOf(')', begin);
+/*     */     
+/* 183 */     tmp = SQL.substring(begin, end);
+/*     */ 
+/*     */     
+/* 186 */     LinkedList ltoks = explodeDN(tmp);
+/* 187 */     this.vals = new String[ltoks.size()];
+/* 188 */     this.offset = new int[ltoks.size()];
+/* 189 */     Iterator<String> it = ltoks.iterator();
+/*     */     int j;
+/* 191 */     for (i = 0, j = 0; it.hasNext(); i++) {
+/* 192 */       this.vals[i] = it.next();
+/*     */ 
+/*     */       
+/* 195 */       if (this.vals[i].charAt(0) == '"' || this.vals[i].charAt(0) == '\'') {
+/* 196 */         this.vals[i] = this.vals[i].substring(1, this.vals[i].length() - 1);
+/*     */       }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */       
+/* 203 */       if (this.vals[i].equals("?")) {
+/*     */         
+/* 205 */         this.offset[j++] = i;
+/*     */ 
+/*     */       
+/*     */       }
+/* 209 */       else if (this.vals[i].charAt(0) == '"' || this.vals[i].charAt(0) == '\'') {
+/* 210 */         this.vals[i] = this.vals[i].substring(1, this.vals[i].length() - 2);
+/*     */       } 
+/*     */ 
+/*     */       
+/* 214 */       this.fieldsMap.add(new Pair(this.fields[i], this.vals[i]));
+/*     */     } 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 222 */     this.store = new SqlStore(SQL);
+/* 223 */     this.store.setFields(this.fields);
+/* 224 */     this.store.setDistinguishedName(this.dn);
+/* 225 */     this.store.setArgs(this.vals.length);
+/* 226 */     this.store.setInsertFields(this.vals);
+/* 227 */     this.store.setFieldOffset(this.offset);
+/* 228 */     this.store.setDnFields(this.dnFields);
+/* 229 */     this.store.setFieldsMap(this.fieldsMap);
+/* 230 */     this.store.setDontAdd(this.dontAdd);
+/* 231 */     this.store.setDefaultOC(this.defOC);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   private void parseCtx(LinkedList ltoks) {
+/* 243 */     this.dnFields = new String[ltoks.size()];
+/* 244 */     Iterator<String> it = ltoks.iterator();
+/* 245 */     int i = 0;
+/* 246 */     while (it.hasNext()) {
+/* 247 */       this.dnFields[i] = it.next();
+/*     */ 
+/*     */       
+/* 250 */       i++;
+/*     */     } 
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void init(JndiLdapConnection con, String SQL, SqlStore sqlStore) throws SQLException {
+/* 257 */     this.insert = (DirectoryInsert)con.getImplClasses().get("INSERT");
+/* 258 */     this.con = con;
+/* 259 */     this.sql = SQL;
+/* 260 */     this.store = sqlStore;
+/* 261 */     this.fields = sqlStore.getFields();
+/* 262 */     this.dn = this.store.getDistinguishedName();
+/* 263 */     this.vals = new String[sqlStore.getArgs()];
+/* 264 */     System.arraycopy(sqlStore.getInsertFields(), 0, this.vals, 0, this.vals.length);
+/* 265 */     this.offset = sqlStore.getFieldOffset();
+/* 266 */     this.dnFields = sqlStore.getDnFields();
+/* 267 */     this.fieldsMap = new LinkedList();
+/* 268 */     this.fieldsMap.addAll(this.store.getFieldsMap());
+/* 269 */     this.dontAdd = this.store.getDontAdd();
+/* 270 */     this.defOC = this.store.getDefOC();
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public Object executeQuery() throws SQLException {
+/* 275 */     return null;
+/*     */   }
+/*     */   
+/*     */   public Object executeUpdate() throws SQLException {
+/* 279 */     this.insert.doInsertJldap(this);
+/* 280 */     return new Integer(1);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setValue(int pos, String value) throws SQLException {
+/* 292 */     ((Pair)this.fieldsMap.get(this.offset[pos])).setValue(value);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public SqlStore getSqlStore() {
+/* 301 */     return this.store;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean getRetrieveDN() {
+/* 308 */     return false;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public DirContext getContext() {
+/* 316 */     return this.con.getContext();
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String[] getVals() {
+/* 324 */     return this.vals;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean isUpdate() {
+/* 332 */     return true;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getDistinguishedName() {
+/* 340 */     StringBuffer fdn = new StringBuffer();
+/*     */     
+/* 342 */     HashMap<Object, Object> track = new HashMap<Object, Object>();
+/*     */ 
+/*     */ 
+/*     */     
+/* 346 */     Object[] fields = this.fieldsMap.toArray();
+/*     */     
+/* 348 */     for (int i = 0; i < this.dnFields.length; i++) {
+/* 349 */       if (this.dnFields[i].indexOf('=') != -1) {
+/*     */         
+/* 351 */         fdn.append(this.dnFields[i]).append(",");
+/*     */       } else {
+/* 353 */         int start; String val = "";
+/* 354 */         if (track.containsKey(this.dnFields[i])) {
+/* 355 */           start = ((Integer)track.get(this.dnFields[i])).intValue() + 1;
+/*     */         } else {
+/*     */           
+/* 358 */           start = 0;
+/*     */         } 
+/*     */         
+/* 361 */         for (int j = start, m = fields.length; j < m; j++) {
+/* 362 */           if (((Pair)fields[j]).getName().equalsIgnoreCase(this.dnFields[i])) {
+/* 363 */             track.put(this.dnFields[i], new Integer(j));
+/* 364 */             val = ((Pair)fields[j]).getValue();
+/*     */             
+/*     */             break;
+/*     */           } 
+/*     */         } 
+/*     */         
+/* 370 */         String tmpv = LDAPDN.escapeRDN(this.dnFields[i] + "=" + val);
+/*     */         
+/* 372 */         fdn.append(tmpv).append(",");
+/*     */       } 
+/*     */     } 
+/*     */ 
+/*     */ 
+/*     */     
+/* 378 */     String finalDN = fdn.toString();
+/*     */     
+/* 380 */     return finalDN.toString().substring(0, finalDN.length() - 1);
+/*     */   }
+/*     */ }
 
-/*
- * JdbcLdapInsert.java
- *
- * Created on March 13, 2002, 1:07 PM
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/sql/statements/JdbcLdapInsert.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-
-package com.octetstring.jdbcLdap.sql.statements;
-
-import com.novell.ldap.LDAPDN;
-import com.octetstring.jdbcLdap.jndi.*;
-import com.octetstring.jdbcLdap.sql.*;
-import java.sql.*;
-import java.util.*;
-
-import javax.naming.*;
-import javax.naming.directory.*;
-import com.octetstring.jdbcLdap.util.*;
-
-/**
- *Stores the information needed to process a SELECT statement
- *@author Marc Boorshtein, OctetString
- */
-public class JdbcLdapInsert
-	extends com.octetstring.jdbcLdap.sql.statements.JdbcLdapSqlAbs
-	implements com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql {
-
-	
-
-	/** Insertion Identifier */
-	static final String INSERT_INTO = "insert into";
-
-	/** Left Parenthasys */
-	static final char LPAR = '(';
-
-	/** Right Parenthasys */
-	static final char RPAR = ')';
-
-	/** Question Mark */
-	static final String QMARK = "?";
-
-	/** Comma */
-	static final String COMMA = ",";
-
-	/** Equals */
-	static final String EQUALS = "=";
-	
-	/** Quote */
-		static final char QUOTE = '"';
-
-	/** DN of insertion */
-	String dn;
-
-	/** Contains fields to be inserted */
-	String[] fields;
-
-	/** dn field array */
-	String[] dnFields;
-
-	/** Contains list of fields */
-	LinkedList fieldsMap;
-
-	
-
-	/** SQL Statement being used */
-	String sql;
-
-	/** Stores the SQL's parts */
-	SqlStore store;
-
-	/** Contains values of insertion */
-	String[] vals;
-
-	/** Contains offset information */
-	int[] offset;
-
-	/** Insertion modules */
-	Insert insert;
-
-	private Set dontAdd;
-
-	private String defOC;
-
-	public JdbcLdapInsert() {
-		super();
-		insert = new Insert();
-	}
-
-	/** Creates new JdbcLdapSql using a connection and a SQL Statement*/
-	public void init(JndiLdapConnection con, String SQL) throws SQLException {
-		this.con = con;
-		
-		LinkedList tmpvals;
-		String tmp;
-		String tmpSQL = SQL.toLowerCase();
-		int begin, end;
-		StringTokenizer tok;
-		String val;
-		int i, j;
-		LinkedList ltoks;
-		Iterator it;
-		this.con = con;
-
-		//retrieve DN
-		begin = tmpSQL.indexOf(INSERT_INTO);
-		begin += INSERT_INTO.length();
-		end = tmpSQL.indexOf(LPAR);
-
-		tmp = SQL.substring(begin, end);
-		this.dn = tmp.trim();
-		//System.out.println("dn : " + this.dn);
-		
-		
-		
-		TableDef def = null;
-		if (con != null) {
-			def = (TableDef) con.getTableDefs().get(dn);
-		}
-		if (def == null) {
-			ltoks = explodeDN(this.dn);
-			parseCtx(ltoks);
-		}
-
-		fieldsMap = new LinkedList();
-
-		//retrieve fields to insert
-		begin = end + 1;
-		end = tmpSQL.indexOf(RPAR, begin);
-		tmp = SQL.substring(begin, end);
-
-		tok = new StringTokenizer(tmp, ",", false);
-		fields = new String[tok.countTokens()];
-		
-		HashMap addPattern = null;
-		
-		if (def != null) {
-			addPattern = def.getAddPatterns();
-		}
-		
-		for (i = 0; tok.hasMoreTokens(); i++) {
-			fields[i] = tok.nextToken();
-			if (addPattern != null) {
-				Object o = addPattern.get(fields[i]);
-				if (o != null) {
-					if (o instanceof HashMap) {
-						addPattern = (HashMap) o;
-					} else {
-						AddPattern pat = (AddPattern) o;
-						this.dn = pat.getAddPattern() + "," + def.getBase();
-						this.dontAdd = pat.getNotToAdd();
-						this.defOC = pat.getDefaultOC();
-					}
-				}
-			}
-			//System.out.println("fields : " + fields[i]);
-		}
-
-		if (def != null) {
-			ltoks = explodeDN(this.dn);
-			parseCtx(ltoks);
-		}
-		
-		//retrieves the field values and builds offset
-
-		begin = end + 1;
-		begin = tmpSQL.indexOf(LPAR, begin) + 1;
-		end = tmpSQL.indexOf(RPAR, begin);
-
-		tmp = SQL.substring(begin, end);
-		//tok = new StringTokenizer(tmp,",",false);
-		
-		ltoks = explodeDN(tmp);
-		vals = new String[ltoks.size()];
-		offset = new int[ltoks.size()];
-		it = ltoks.iterator();
-		//System.out.println("begin fields");
-		for (i = 0, j = 0; it.hasNext(); i++) {
-			vals[i] = (String) it.next();
-			
-			//temporary
-			if (vals[i].charAt(0) == '"' || vals[i].charAt(0) == '\'') {
-				vals[i] = vals[i].substring(1,vals[i].length()-1);
-			}
-			
-			//System.out.println(vals[i]);
-			
-			
-			
-			if (vals[i].equals(QMARK)) {
-				
-				offset[j++] = i;
-				//System.out.println("j : " + j + " i : " + i + " fields[i] : " + fields[i]);
-				
-			}
-			else if (vals[i].charAt(0) == QUOTE || vals[i].charAt(0) == '\'') {
-				vals[i] = vals[i].substring(1,vals[i].length()-2);
-				
-			}
-			 //else {
-			fieldsMap.add(new Pair(fields[i],vals[i]));
-			 	
-				
-			//}
-		}
-		//System.out.println("end fields");
-
-		//store it in the SQL Store
-		store = new SqlStore(SQL);
-		store.setFields(fields);
-		store.setDistinguishedName(dn);
-		store.setArgs(vals.length);
-		store.setInsertFields(vals);
-		store.setFieldOffset(offset);
-		store.setDnFields(this.dnFields);
-		store.setFieldsMap(fieldsMap);
-		store.setDontAdd(this.dontAdd);
-		store.setDefaultOC(this.defOC);
-	}
-
-	/**
-	 * @param ltoks
-	 */
-	private void parseCtx(LinkedList ltoks) {
-		int i;
-		Iterator it;
-		//dnFields = LDAPDN.explodeDN(this.dn,false);
-		//tok = new StringTokenizer(this.dn,COMMA);
-		//System.out.println("dnFields length : " +dnFields.length);
-		dnFields = new String[ltoks.size()];
-		it = ltoks.iterator();
-		i=0;
-		while (it.hasNext()) {
-			dnFields[i] = (String) it.next();
-			//if (dnFields[i].indexOf('=') != -1) dnFields[i] = LDAPDN.normalize(dnFields[i]);
-			//System.out.println(dnFields[i]);
-			i++;
-		}
-	}
-
-	/** Creates new JdbcLdapSql using a connection, a SQL Statement and a cached SqlStore*/
-	public void init(JndiLdapConnection con, String SQL, SqlStore sqlStore)
-		throws SQLException {
-		this.con = con;
-		this.sql = SQL;
-		this.store = sqlStore;
-		fields = sqlStore.getFields();
-		dn = store.getDistinguishedName();
-		vals = new String[sqlStore.getArgs()];
-		System.arraycopy(sqlStore.getInsertFields(), 0, vals, 0, vals.length);
-		offset = sqlStore.getFieldOffset();
-		this.dnFields = sqlStore.getDnFields();
-		this.fieldsMap = new LinkedList();
-		fieldsMap.addAll(store.getFieldsMap());
-		this.dontAdd = store.getDontAdd();
-		this.defOC = store.getDefOC();
-	}
-
-	/** Executes the current statement and returns the results */
-	public Object executeQuery() throws SQLException {
-		return null;
-	}
-
-	public Object executeUpdate() throws SQLException {
-		insert.doInsertJldap(this);
-		return new Integer(1);
-	}
-
-	/**
-	 *Sets the value at position
-	 *@param pos Position to set
-	 *@param val Value to set
-	 */
-	public void setValue(int pos, String value) throws SQLException {
-		
-		//if (pos < 0 || pos > fieldsMap.size())
-		//	throw new SQLException(Integer.toString(pos) + " out of bounds");
-		((Pair) fieldsMap.get(offset[pos])).setValue(value);
-		//fieldsMap.put(fields[offset[pos]], value);
-	}
-
-	/**
-	 *Used to retrieve the SqlStore for caching
-	 *@return The statments SqlStore object
-	 */
-	public SqlStore getSqlStore() {
-		return store;
-	}
-
-	/**
-	 *Retrieves if the DN is being returned
-	 */
-	public boolean getRetrieveDN() {
-		return false;
-	}
-
-	/**
-	 *Retrieves the context used to talk to the LDAP server
-	 */
-
-	public DirContext getContext() {
-		return con.getContext();
-	}
-
-	/**
-	 *Retrieves values to be inserted
-	 *@return array of values to insert
-	 */
-	public String[] getVals() {
-		return vals;
-	}
-
-	/**
-	* Determines if statement is update or select
-	* @return true if is an update
-	*/
-	public boolean isUpdate() {
-		return true;
-	}
-
-	/**
-	 *Retrieves the complete dn
-	 *@return a nuilt dn based on passed in parameters
-	 */
-	public String getDistinguishedName() {
-		StringBuffer fdn = new StringBuffer();
-		
-		HashMap track = new HashMap();
-		Integer loc;
-		int start;
-		String val;
-		Object[] fields = fieldsMap.toArray();
-		
-		for (int i = 0; i < this.dnFields.length; i++) {
-			if (dnFields[i].indexOf('=') != -1) {
-				//System.out.println("in getDistinguishedName : " +dnFields[i]);
-				fdn.append(dnFields[i]).append(COMMA);
-			} else {
-				val = "";
-				if (track.containsKey(dnFields[i])) {
-					start = ((Integer) track.get(dnFields[i])).intValue() + 1;
-				}
-				else {
-					start = 0;
-				}
-				
-				for (int j=start,m=fields.length;j<m;j++) {
-					if (((Pair) fields[j]).getName().equalsIgnoreCase(dnFields[i])) {
-						track.put(dnFields[i],new Integer(j));
-						val = ((Pair) fields[j]).getValue();
-						break;
-					}
-				}
-				
-				
-				String tmpv = LDAPDN.escapeRDN(dnFields[i] + "=" + val);
-				//System.out.println("cleaned : " + tmpv);
-				fdn.append(tmpv).append(
-					COMMA);
-				//TODO This HAS to be fixed
-				
-			}
-		}
-		String finalDN = fdn.toString();
-		
-		return finalDN.toString().substring(0, finalDN.length() - 1);
-	}
-
-}

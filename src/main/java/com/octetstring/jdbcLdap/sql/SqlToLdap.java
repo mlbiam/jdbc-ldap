@@ -1,475 +1,426 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*     */ package com.octetstring.jdbcLdap.sql;
+/*     */ 
+/*     */ import java.sql.SQLException;
+/*     */ import java.util.HashMap;
+/*     */ import java.util.Iterator;
+/*     */ import java.util.LinkedList;
+/*     */ import java.util.Stack;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class SqlToLdap
+/*     */ {
+/*     */   public static final String SQL_AND = "AND";
+/*     */   public static final String SQL_OR = "OR";
+/*     */   public static final String SQL_NOT = "NOT";
+/*     */   public static final String SQL_NULL = "NULL";
+/*     */   public static final String SQL_IS = "IS";
+/*     */   public static final char LEFT_PAR = '(';
+/*     */   public static final char RIGHT_PAR = ')';
+/*     */   static final String SL_PAR = "(";
+/*     */   static final String SR_PAR = ")";
+/*     */   HashMap order;
+/*     */   
+/*     */   public SqlToLdap() {
+/*  70 */     this.order = new HashMap<Object, Object>();
+/*  71 */     this.order.put("NOT", new Integer(5));
+/*  72 */     this.order.put("AND", new Integer(4));
+/*  73 */     this.order.put("OR", new Integer(3));
+/*  74 */     this.order.put(")", new Integer(1));
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   boolean lastNodeGreater(Stack<Node> opps, String curr) {
+/*  84 */     if (opps.isEmpty()) return false;
+/*     */     
+/*  86 */     Node node = opps.peek();
+/*     */     
+/*  88 */     return (node.type > ((Integer)this.order.get(curr)).intValue());
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   boolean isCmd(String curr) {
+/*  97 */     return (curr.equalsIgnoreCase(")") || curr.equalsIgnoreCase("AND") || curr.equalsIgnoreCase("OR") || curr.equalsIgnoreCase("NOT"));
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   void procStack(Stack<Node> opps, Stack<Node> elements, int curr) {
+/*     */     Node opp;
+/* 109 */     if (opps.isEmpty())
+/*     */       return; 
+/*     */     do {
+/*     */       Node l;
+/* 113 */       opp = opps.pop();
+/*     */       
+/* 115 */       Node r = elements.pop();
+/* 116 */       if (opp.type != 5 && opp.type != 0) {
+/*     */         
+/* 118 */         l = elements.pop();
+/*     */       }
+/*     */       else {
+/*     */         
+/* 122 */         l = null;
+/*     */       } 
+/*     */ 
+/*     */ 
+/*     */       
+/* 127 */       opp.l = l;
+/* 128 */       opp.r = r;
+/*     */       
+/* 130 */       if (opp.type == 0) {
+/* 131 */         elements.push(opp.r);
+/*     */       } else {
+/*     */         
+/* 134 */         elements.push(opp);
+/*     */       }
+/*     */     
+/* 137 */     } while (opp.type > curr && !opps.isEmpty());
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String convertToLdap(String expr, HashMap fieldMap) throws SQLException {
+/* 147 */     LinkedList list = inOrder(expr, fieldMap);
+/*     */     
+/* 149 */     Stack<Node> elements = new Stack();
+/* 150 */     Stack<Node> opps = new Stack();
+/*     */ 
+/*     */ 
+/*     */     
+/* 154 */     Iterator<String> it = list.iterator();
+/* 155 */     while (it.hasNext()) {
+/*     */       
+/* 157 */       String curr = it.next();
+/*     */       
+/* 159 */       while (curr.trim().length() == 0 && it.hasNext()) {
+/* 160 */         curr = it.next();
+/*     */       }
+/*     */ 
+/*     */       
+/* 164 */       String currUCase = curr.toUpperCase();
+/*     */       
+/* 166 */       if (curr.equalsIgnoreCase("(")) {
+/* 167 */         Node node1 = new Node();
+/* 168 */         node1.type = 0;
+/* 169 */         node1.l = null;
+/* 170 */         node1.r = null;
+/* 171 */         opps.push(node1); continue;
+/*     */       } 
+/* 173 */       if (isCmd(currUCase)) {
+/* 174 */         if (curr.equalsIgnoreCase(")")) {
+/* 175 */           procStack(opps, elements, ((Integer)this.order.get(")")).intValue()); continue;
+/*     */         } 
+/* 177 */         if (lastNodeGreater(opps, currUCase)) {
+/* 178 */           procStack(opps, elements, ((Integer)this.order.get(currUCase)).intValue());
+/* 179 */           Node node2 = new Node();
+/* 180 */           node2.l = null;
+/* 181 */           node2.r = null;
+/* 182 */           node2.type = ((Integer)this.order.get(currUCase)).intValue();
+/* 183 */           opps.push(node2);
+/*     */           continue;
+/*     */         } 
+/* 186 */         Node node1 = new Node();
+/* 187 */         node1.l = null;
+/* 188 */         node1.r = null;
+/* 189 */         node1.type = ((Integer)this.order.get(currUCase)).intValue();
+/* 190 */         opps.push(node1); continue;
+/*     */       } 
+/* 192 */       if (currUCase.equals("IS")) {
+/* 193 */         String next = it.next();
+/*     */         
+/* 195 */         if (next.equalsIgnoreCase("NULL")) {
+/* 196 */           Node node1 = elements.peek();
+/* 197 */           if (fieldMap != null) {
+/*     */             
+/* 199 */             String fieldName = node1.val;
+/* 200 */             String newField = (String)fieldMap.get(fieldName);
+/* 201 */             if (newField != null) {
+/* 202 */               node1.val = newField;
+/*     */             }
+/*     */           } 
+/*     */ 
+/*     */           
+/* 207 */           node1.val = "!(" + node1.val + "=*)"; continue;
+/* 208 */         }  if (next.equalsIgnoreCase("NOT")) {
+/* 209 */           String next2 = it.next();
+/* 210 */           if (!next2.equalsIgnoreCase("NULL")) {
+/* 211 */             throw new SQLException("Unexpected token near IS");
+/*     */           }
+/*     */           
+/* 214 */           Node node1 = elements.peek();
+/*     */           
+/* 216 */           if (fieldMap != null) {
+/*     */             
+/* 218 */             String fieldName = node1.val;
+/* 219 */             String newField = (String)fieldMap.get(fieldName);
+/* 220 */             if (newField != null) {
+/* 221 */               node1.val = newField;
+/*     */             }
+/*     */           } 
+/*     */           
+/* 225 */           node1.val += "=*";
+/*     */           continue;
+/*     */         } 
+/* 228 */         throw new SQLException("Unexpected token near IS");
+/*     */       } 
+/*     */ 
+/*     */       
+/* 232 */       Node node = new Node();
+/* 233 */       node.l = null;
+/* 234 */       node.r = null;
+/* 235 */       node.val = curr;
+/* 236 */       node.type = 6;
+/* 237 */       elements.push(node);
+/*     */     } 
+/*     */ 
+/*     */     
+/* 241 */     procStack(opps, elements, -1);
+/*     */     
+/* 243 */     Node tree = elements.pop();
+/*     */ 
+/*     */ 
+/*     */     
+/* 247 */     StringBuffer finalExpr = new StringBuffer();
+/* 248 */     tree.traverse(finalExpr);
+/*     */     
+/* 250 */     return finalExpr.toString();
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public LinkedList inOrder(String expr, HashMap fieldMap) {
+/* 260 */     LinkedList<String> list = new LinkedList();
+/* 261 */     StringBuffer buf = new StringBuffer();
+/*     */ 
+/*     */     
+/* 264 */     char[] tmp = new char[1];
+/*     */     
+/* 266 */     for (int i = 0; i < expr.length(); i++) {
+/* 267 */       char curr = expr.charAt(i);
+/*     */ 
+/*     */       
+/* 270 */       if (curr == '(' || curr == ')') {
+/*     */         
+/* 272 */         if (buf.length() != 0 && 
+/* 273 */           !addToList(list, buf, fieldMap)) {
+/*     */           
+/* 275 */           list.add(transformToFilter(new StringBuffer(buf.toString().trim()), fieldMap));
+/* 276 */           buf.setLength(0);
+/*     */         } 
+/*     */ 
+/*     */         
+/* 280 */         tmp[0] = curr;
+/* 281 */         list.add(new String(tmp));
+/*     */ 
+/*     */       
+/*     */       }
+/* 285 */       else if (curr == ' ') {
+/* 286 */         if (!addToList(list, buf, fieldMap)) {
+/* 287 */           buf.append(curr);
+/*     */         }
+/*     */       } else {
+/*     */         
+/* 291 */         buf.append(curr);
+/*     */       } 
+/*     */     } 
+/*     */ 
+/*     */     
+/* 296 */     if (buf.length() != 0) {
+/*     */       
+/* 298 */       String stmp = transformToFilter(buf, fieldMap);
+/* 299 */       list.add(stmp);
+/*     */     } 
+/*     */     
+/* 302 */     return list;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   private String transformToFilter(StringBuffer buf, HashMap fieldMap) {
+/* 310 */     String stmp = buf.toString().trim();
+/*     */     
+/* 312 */     int like = stmp.toLowerCase().indexOf(" like ");
+/* 313 */     if (like != -1) {
+/* 314 */       buf.setLength(0);
+/* 315 */       buf.append(stmp);
+/* 316 */       System.out.println("Buff : " + like + ";" + buf.length());
+/* 317 */       buf.delete(like, like + 6);
+/* 318 */       buf.insert(like, '=');
+/* 319 */       stmp = buf.toString();
+/*     */     } 
+/*     */     
+/* 322 */     if (stmp.charAt(0) == '\'') {
+/* 323 */       stmp = stmp.substring(1);
+/*     */     }
+/*     */     
+/* 326 */     int equals = stmp.indexOf('=');
+/* 327 */     if (equals != -1) {
+/* 328 */       int quote = stmp.indexOf('\'', equals);
+/* 329 */       if (quote != -1 && stmp.charAt(quote - 1) != '\\') {
+/* 330 */         buf.setLength(0);
+/* 331 */         buf.append(stmp);
+/* 332 */         buf.delete(equals + 1, quote + 1);
+/* 333 */         stmp = buf.toString();
+/*     */       } 
+/*     */       
+/* 336 */       if (fieldMap != null) {
+/* 337 */         equals = stmp.indexOf('=');
+/* 338 */         String fieldName = stmp.substring(0, equals).trim();
+/* 339 */         System.out.println("filedName " + fieldName);
+/* 340 */         String newField = (String)fieldMap.get(fieldName);
+/* 341 */         System.out.println("newfield " + newField);
+/* 342 */         if (newField != null) {
+/* 343 */           buf.setLength(0);
+/* 344 */           buf.append(newField).append(stmp.substring(equals));
+/* 345 */           stmp = buf.toString();
+/* 346 */           System.out.println(stmp);
+/*     */         } 
+/*     */       } 
+/*     */     } 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 356 */     int wc = stmp.indexOf('%');
+/* 357 */     if (wc != -1) {
+/* 358 */       buf.setLength(0);
+/* 359 */       buf.append(stmp);
+/* 360 */       if (buf.charAt(wc - 1) != '\\') {
+/* 361 */         buf.setCharAt(wc, '*');
+/*     */       } else {
+/* 363 */         buf.deleteCharAt(wc - 1);
+/* 364 */         wc--;
+/*     */       } 
+/*     */       
+/* 367 */       wc = buf.indexOf("%", wc + 1);
+/* 368 */       while (wc != -1) {
+/* 369 */         if (buf.charAt(wc - 1) != '\\') {
+/* 370 */           buf.setCharAt(wc, '*');
+/*     */         } else {
+/* 372 */           buf.deleteCharAt(wc - 1);
+/* 373 */           wc--;
+/*     */         } 
+/* 375 */         wc = buf.indexOf("%", wc + 1);
+/*     */       } 
+/* 377 */       stmp = buf.toString();
+/*     */     } 
+/*     */     
+/* 380 */     if (stmp.charAt(stmp.length() - 1) == '\'' && stmp.charAt(stmp.length() - 2) != '\\') {
+/* 381 */       stmp = stmp.substring(0, stmp.length() - 1);
+/*     */     }
+/* 383 */     return stmp;
+/*     */   }
+/*     */   
+/*     */   boolean addToList(LinkedList<String> list, StringBuffer buf, HashMap fieldMap) {
+/* 387 */     int space = buf.toString().lastIndexOf(' ');
+/* 388 */     boolean added = false;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 394 */     if (buf.toString().trim().equalsIgnoreCase("NOT")) {
+/* 395 */       list.add(transformToFilter(buf, fieldMap));
+/*     */       
+/* 397 */       buf.setLength(0);
+/*     */     }
+/* 399 */     else if (buf.substring(space + 1).equalsIgnoreCase("AND") || buf.substring(space + 1).equalsIgnoreCase("OR") || buf.substring(space + 1).equalsIgnoreCase("NOT") || buf.substring(space + 1).equalsIgnoreCase("IS") || buf.substring(space + 1).equalsIgnoreCase("IS")) {
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */       
+/* 405 */       String add = buf.substring(0, space).trim();
+/* 406 */       if (add.length() != 0) {
+/* 407 */         String tmp = buf.substring(0, space).trim();
+/*     */         
+/* 409 */         list.add(transformToFilter(new StringBuffer(tmp), fieldMap));
+/*     */       } 
+/*     */       
+/* 412 */       list.add(buf.substring(space + 1).trim());
+/*     */       
+/* 414 */       buf.setLength(0);
+/* 415 */       added = true;
+/*     */     } 
+/*     */     
+/* 418 */     return added;
+/*     */   }
+/*     */ }
 
-/*
- * SqlToLdap.java
- *
- * Created on March 11, 2002, 8:44 AM
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/sql/SqlToLdap.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-
-package com.octetstring.jdbcLdap.sql;
-
-import java.sql.SQLException;
-import java.util.*;
-
-import com.octetstring.jdbcLdap.jndi.SQLNamingException;
-
-/**
- *
- *Transforms an in-fix SQL query into an LDAP pre-fix notation
- *@author Marc Boorshtein, OctetString 
- */
-public class SqlToLdap {
-    
-    /** SQL Representation of AND */
-    public static final String SQL_AND = "AND";
-    
-    /** SQL Representation or OR */
-    public static final String SQL_OR = "OR";
-    
-    /** SQL Representation of NOT */
-    public static final String SQL_NOT = "NOT";
-    
-    /** SQL Representation of NULL */
-    public static final String SQL_NULL = "NULL";
-    
-    /** SQL Representation of IS */
-    public static final String SQL_IS = "IS";
-    
-    /** Left Parenthasese **/
-    public static final char LEFT_PAR = '(';
-    
-    /** Right Parenthasese **/
-    public static final char RIGHT_PAR = ')';
-    
-    /** String Left Parenthasese **/
-    static final String SL_PAR = "(";
-    
-    /** String Right Parenthasese **/
-    static final String SR_PAR = ")";
-    
-    /** Contains the order of opperations */
-    HashMap order;
-    
-    
-    
-    
-    /** Creates new SqlToLdap */
-    public SqlToLdap() {
-        order = new HashMap();
-        order.put(SQL_NOT,new Integer(Node.TYPE_NOT));
-        order.put(SQL_AND,new Integer(Node.TYPE_AND));
-        order.put(SQL_OR,new Integer(Node.TYPE_OR));
-        order.put(SR_PAR,new Integer(Node.TYPE_RPAR));
-    }
-    
-    /**
-     *Determines if the last node is of a greater order then current
-     *@param opps Stack of opperations
-     *@param curr Current Operation
-     *@return true if the last opp is greater then the current one
-     */
-    boolean lastNodeGreater(Stack opps, String curr) {
-        if (opps.isEmpty()) return false;
-        
-        Node node = (Node) opps.peek();
-        
-        return node.type > ((Integer) order.get(curr)).intValue();
-    }
-    
-    
-    /**
-     *Determines if the string is NOT AND OR )
-     *@param curr Current element
-     */
-    boolean isCmd(String curr) {
-        return (curr.equalsIgnoreCase(SR_PAR)) || (curr.equalsIgnoreCase(SQL_AND)) || (curr.equalsIgnoreCase(SQL_OR)) || (curr.equalsIgnoreCase(SQL_NOT) );
-    }
-    
-    /**
-     *Processes the stacks until an element with a lower order is found
-     *@param opps The Opperations stack
-     *@param elements The elements stack
-     */
-    void procStack(Stack opps, Stack elements, int curr) {
-        Node l,r,opp,tmp;
-        
-        
-        if (opps.isEmpty()) return;
-        
-        do {
-            
-            opp = (Node) opps.pop();
-            
-            r = (Node) elements.pop();
-            if (opp.type != Node.TYPE_NOT && opp.type != Node.TYPE_LPAR) {
-                
-                l = (Node) elements.pop();
-            }
-            else {
-                
-                l=null;
-            }
-            
-            
-            
-            opp.l = l;
-            opp.r = r;
-            
-            if (opp.type == Node.TYPE_LPAR) {
-                elements.push(opp.r);
-            }
-            else {
-                elements.push(opp);
-            }
-            
-        } while (opp.type > curr &&  ! opps.isEmpty());
-        
-    }
-    
-    /**
-     *Converts a SQL expresion into and LDAP expression
-     *@param expr SQL Expresion to convert
-     * @throws SQLException
-     */
-    public String convertToLdap(String expr,HashMap fieldMap) throws SQLException {
-       LinkedList list = inOrder(expr,fieldMap);
-       
-       Stack elements = new Stack();
-       Stack opps = new Stack();
-       Node tree;
-       String curr;
-       String currUCase;
-       Iterator it = list.iterator();
-       while (it.hasNext()) {
-            
-            curr = (String) it.next();
-            
-            while (curr.trim().length() == 0 && it.hasNext()) {
-                curr = (String) it.next();
-                
-            }
-            
-            currUCase = curr.toUpperCase();
-            
-            if (curr.equalsIgnoreCase(SL_PAR)) {
-                tree = new Node();
-                tree.type = Node.TYPE_LPAR;
-                tree.l = null;
-                tree.r = null;
-                opps.push(tree);
-            }
-            else if (isCmd(currUCase)) {
-                if (curr.equalsIgnoreCase(SR_PAR)) {
-                    procStack(opps,elements,((Integer) order.get(SR_PAR)).intValue());
-                }
-                else if (lastNodeGreater(opps,currUCase)) {
-                    procStack(opps,elements,((Integer) order.get(currUCase)).intValue());
-                    tree = new Node();
-                    tree.l = null;
-                    tree.r = null;
-                    tree.type = ((Integer) order.get(currUCase)).intValue();
-                    opps.push(tree);
-                }
-                else {
-                    tree = new Node();
-                    tree.l = null;
-                    tree.r = null;
-                    tree.type = ((Integer) order.get(currUCase)).intValue();
-                    opps.push(tree);
-                }
-            } else if (currUCase.equals(SQL_IS)) {
-            		String next = (String) it.next();
-            		
-            		if (next.equalsIgnoreCase(SQL_NULL)) { 
-            			tree = (Node) elements.peek();
-            			if (fieldMap != null) {
-            				
-            				String fieldName = tree.val;
-            				String newField = (String) fieldMap.get(fieldName);
-            				if (newField != null) {
-            					tree.val = newField;
-            				}
-            			} 
-            			
-            			
-            			tree.val = "!(" + tree.val + "=*)";
-            		} else if (next.equalsIgnoreCase(SQL_NOT)) {
-            			String next2 = (String) it.next();
-            			if (! next2.equalsIgnoreCase(SQL_NULL)) {
-            				throw new SQLException("Unexpected token near IS");
-            			}
-            			
-            			tree = (Node) elements.peek();
-            			
-            			if (fieldMap != null) {
-            				
-            				String fieldName = tree.val;
-            				String newField = (String) fieldMap.get(fieldName);
-            				if (newField != null) {
-            					tree.val = newField;
-            				}
-            			} 
-            			
-            			tree.val = tree.val + "=*";
-            			
-            		} else {
-            			throw new SQLException("Unexpected token near IS");
-            		}
-            }
-            else {
-                tree = new Node();
-                tree.l = null;
-                tree.r = null;
-                tree.val = curr;
-                tree.type = Node.TYPE_ELEMENT;
-                elements.push(tree);
-            }
-       }
-       
-       procStack(opps,elements,-1);
-       
-       tree = (Node) elements.pop();
-       
-       
-       
-       StringBuffer finalExpr = new StringBuffer();
-       tree.traverse(finalExpr);
-       
-       return finalExpr.toString();
-       
-    }
-    
-    /**
-     *Parses an expression into a set of in-order nodes
-     *@param expr The SQL expression to be parsed
-     *@return A LinkedList containing the parsed nodes
-     */
-    public LinkedList inOrder(String expr,HashMap fieldMap) {
-        LinkedList list = new LinkedList();
-        StringBuffer buf = new StringBuffer();
-        int i;
-        char curr;
-        char[] tmp = new char[1];
-        
-        for (i=0;i<expr.length();i++) {
-            curr = expr.charAt(i);
-            
-            //first determine if we are at a ()
-            if (curr == LEFT_PAR || curr == RIGHT_PAR) {
-                //add buffer to list
-                if (buf.length() != 0) {
-                    if (! addToList(list,buf,fieldMap)) {
- 
-                        list.add(transformToFilter(new StringBuffer(buf.toString().trim()),fieldMap));
-                        buf.setLength(0);
-                    }
-                }
-                //add parenthasese to list
-                tmp[0] = curr;
-                list.add(new String(tmp));
-            }
-            else {
-                //if we are at a space, detrmine if we need to add to the list
-                if (curr == ' ') {
-                    if (! addToList(list,buf,fieldMap))
-                        buf.append(curr);
-                }
-                else {
-                    //add to the buffer instead
-                    buf.append(curr);
-                }
-            }
-        }
-        
-        if (buf.length() != 0) {
-        	
-        		String stmp = transformToFilter(buf,fieldMap);
-            list.add(stmp);
-        }
-        
-        return list;
-    }
-    
-    /**
-	 * @param buf
-	 * @return
-	 */
-	private String transformToFilter(StringBuffer buf,HashMap fieldMap) {
-		String stmp = buf.toString().trim();
-
-		int like = stmp.toLowerCase().indexOf(" like ");
-		if (like != -1) {
-			buf.setLength(0);
-			buf.append(stmp);
-			System.out.println("Buff : " + like + ";" + buf.length());
-			buf.delete(like, like + 6);
-			buf.insert(like,'=');
-			stmp = buf.toString();
-		}
-		
-		if (stmp.charAt(0) == '\'') {
-			stmp = stmp.substring(1);
-		}
-		
-		int equals = stmp.indexOf('=');
-		if (equals != -1) {
-			int quote = stmp.indexOf('\'',equals);
-			if (quote != -1 && stmp.charAt(quote - 1) != '\\') {
-				buf.setLength(0);
-				buf.append(stmp);
-				buf.delete(equals + 1,quote + 1);
-				stmp = buf.toString();
-			}
-			
-			if (fieldMap != null) {
-				equals = stmp.indexOf('=');
-				String fieldName = stmp.substring(0,equals).trim();
-				System.out.println("filedName " + fieldName);
-				String newField = (String) fieldMap.get(fieldName);
-				System.out.println("newfield " + newField);
-				if (newField != null) {
-					buf.setLength(0);
-					buf.append(newField).append(stmp.substring(equals));
-					stmp = buf.toString();
-					System.out.println(stmp);
-				}
-			} 
-			
-			
-			
-		}
-		
-		
-		
-		int wc = stmp.indexOf('%');
-		if (wc != -1) {
-			buf.setLength(0);
-			buf.append(stmp);
-			if (buf.charAt(wc - 1) != '\\') {
-				buf.setCharAt(wc,'*');
-			} else {
-				buf.deleteCharAt(wc - 1);
-				wc--;
-				
-			}
-			wc = buf.indexOf("%",wc + 1);
-			while (wc != -1) {
-				if (buf.charAt(wc - 1) != '\\') {
-					buf.setCharAt(wc,'*');
-				} else {
-					buf.deleteCharAt(wc - 1);
-					wc--;
-				}
-				wc = buf.indexOf("%",wc + 1);
-			}
-			stmp = buf.toString();
-		}
-		
-		if (stmp.charAt(stmp.length() - 1) == '\'' && stmp.charAt(stmp.length() - 2) != '\\') {
-			stmp = stmp.substring(0,stmp.length() - 1);
-		}
-		return stmp;
-	}
-
-	boolean addToList(LinkedList list, StringBuffer buf,HashMap fieldMap) {
-        int space = buf.toString().lastIndexOf(' ');
-        boolean added = false;
-        
-        String add;
-        
-      
-        
-        if (buf.toString().trim().equalsIgnoreCase(SQL_NOT)) {
-            list.add(this.transformToFilter(buf,fieldMap));
-            
-            buf.setLength(0);
-        }
-        else if ((buf.substring(space + 1).equalsIgnoreCase(SQL_AND)) || 
-            (buf.substring(space + 1).equalsIgnoreCase(SQL_OR)) ||
-            (buf.substring(space + 1).equalsIgnoreCase(SQL_NOT)) ||
-            (buf.substring(space + 1).equalsIgnoreCase(SQL_IS)) ||  
-			(buf.substring(space + 1).equalsIgnoreCase(SQL_IS)) )
-        {
-            add =buf.substring(0,space).trim();
-            if (add.length() != 0) {
-            		String tmp  = buf.substring(0,space).trim();
-            		
-                list.add(this.transformToFilter(new StringBuffer(tmp),fieldMap));
-            }
-            
-            list.add(buf.substring(space + 1).trim());
-            
-            buf.setLength(0);
-            added = true;
-        }
-        
-        return added;
-    }
-
-}
-
-class Node {
-    public static final int TYPE_LPAR = 0;
-    public static final  int TYPE_RPAR = 1;
-    public static  final int TYPE_PAR = 2;
-    public static  final int TYPE_OR = 3;
-    public static  final int TYPE_AND = 4;
-    public static  final int TYPE_NOT = 5;
-    public static  final int TYPE_ELEMENT = 6;
-    
-    Node l,r;
-    int type;
-    String val;
-    
-    public void traverse(StringBuffer buff) {
-       
-
-        switch (type) {
-           case TYPE_AND :   buff.append("(&");  break;
-           case TYPE_OR :    buff.append("(|"); break;
-           case TYPE_NOT :  buff.append("(!");  break;
-           case TYPE_ELEMENT : buff.append("(").append(val).append(")"); break;
-       }
-       
-       if (l!=null) l.traverse(buff);
-       if (r!=null) r.traverse(buff);
-       
-       if (type != TYPE_ELEMENT) {
-            buff.append(")");
-       }
-       
-       
-       
-       
-    }
-    
-    public void inOrder() {
-        boolean cont = l!=null;
-        
-        if (cont) l.inOrder();
-        
-        switch (type) {
-           case TYPE_AND :   System.out.print(" AND "); break;
-           case TYPE_OR :    System.out.print(" OR "); break;
-           case TYPE_NOT :  System.out.print(" NOT "); break;
-           case TYPE_ELEMENT : System.out.print(val); break;
-       }
-       
-       if (r!=null) r.inOrder();
-        
-        
-        
-    }
-}

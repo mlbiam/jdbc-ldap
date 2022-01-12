@@ -1,278 +1,286 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*     */ package com.octetstring.jdbcLdap.sql.statements;
+/*     */ 
+/*     */ import com.octetstring.jdbcLdap.backend.DirectoryUpdate;
+/*     */ import com.octetstring.jdbcLdap.jndi.JndiLdapConnection;
+/*     */ import com.octetstring.jdbcLdap.sql.SqlStore;
+/*     */ import com.octetstring.jdbcLdap.util.TableDef;
+/*     */ import java.sql.SQLException;
+/*     */ import java.util.Iterator;
+/*     */ import java.util.LinkedList;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class JdbcLdapUpdate
+/*     */   extends JdbcLdapSqlAbs
+/*     */   implements JdbcLdapSql
+/*     */ {
+/*     */   static final char QUOTE = '"';
+/*     */   static final String DEFAULT_SEARCH_FILTER = "(objectClass=*)";
+/*     */   DirectoryUpdate update;
+/*     */   static final String QMARK = "?";
+/*     */   static final String EQUALS = "=";
+/*     */   static final String UPDATE = "update";
+/*     */   static final String SET = " set ";
+/*     */   static final String WHERE = " where ";
+/*     */   static final String COMMA = ",";
+/*     */   SqlStore store;
+/*     */   String[] fields;
+/*     */   String[] vals;
+/*     */   int[] offset;
+/*     */   int border;
+/*     */   
+/*     */   public Object executeQuery() throws SQLException {
+/*  87 */     throw new SQLException("UPDATE can not execute a query");
+/*     */   }
+/*     */   
+/*     */   public Object executeUpdate() throws SQLException {
+/*  91 */     return new Integer(this.update.doUpdateJldap(this));
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean getRetrieveDN() {
+/* 100 */     return false;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public SqlStore getSqlStore() {
+/* 108 */     return this.store;
+/*     */   }
+/*     */   
+/*     */   public void init(JndiLdapConnection con, String SQL) throws SQLException {
+/*     */     Integer iscope;
+/* 113 */     this.update = (DirectoryUpdate)con.getImplClasses().get("UPDATE");
+/* 114 */     this.con = con;
+/* 115 */     String tmpSQL = SQL.toLowerCase();
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 127 */     int begin = tmpSQL.indexOf("update") + "update".length();
+/* 128 */     int end = tmpSQL.indexOf(" set ");
+/* 129 */     this.from = SQL.substring(begin, end).trim();
+/*     */     
+/* 131 */     if (con.getTableDefs().containsKey(this.from)) {
+/* 132 */       this.from = ((TableDef)con.getTableDefs().get(this.from)).getScopeBase();
+/*     */     }
+/*     */     
+/* 135 */     if (this.from.indexOf(";") != -1) {
+/* 136 */       String sscope = this.from.substring(0, this.from.indexOf(";")).trim();
+/*     */       
+/* 138 */       iscope = (Integer)this.scopes.get(sscope);
+/* 139 */       this.from = this.from.substring(this.from.indexOf(";") + 1);
+/*     */     }
+/*     */     else {
+/*     */       
+/* 143 */       iscope = (Integer)this.scopes.get(con.getSearchScope());
+/*     */     } 
+/*     */     
+/* 146 */     if (iscope == null) {
+/* 147 */       throw new SQLException("Unrecognized Search Scope");
+/*     */     }
+/*     */     
+/* 150 */     this.scope = iscope.intValue();
+/*     */ 
+/*     */ 
+/*     */     
+/* 154 */     begin = tmpSQL.indexOf(" set ") + " set ".length();
+/*     */     
+/* 156 */     end = tmpSQL.indexOf(" where ");
+/* 157 */     if (end == -1) {
+/* 158 */       end = tmpSQL.length();
+/*     */     }
+/*     */     
+/* 161 */     String set = SQL.substring(begin, end);
+/*     */     
+/* 163 */     LinkedList itok = explodeDN(set);
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 172 */     this.fields = new String[itok.size()];
+/* 173 */     this.vals = new String[itok.size()];
+/* 174 */     this.offset = new int[itok.size()];
+/* 175 */     Iterator<String> it = itok.iterator(); int j=0;
+/* 176 */     for (int i = 0; it.hasNext(); i++) {
+/* 177 */       String token = ((String)it.next()).trim();
+/*     */ 
+/*     */ 
+/*     */       
+/* 181 */       this.fields[i] = token.substring(0, token.indexOf("="));
+/* 182 */       this.vals[i] = token.substring(token.indexOf("=") + 1);
+/*     */ 
+/*     */       
+/* 185 */       if (this.vals[i].charAt(0) == '"' || this.vals[i].charAt(0) == '\'') {
+/* 186 */         this.vals[i] = this.vals[i].substring(1, this.vals[i].length() - 1);
+/*     */       }
+/*     */ 
+/*     */       
+/* 190 */       if (this.vals[i].equals("?")) {
+/* 191 */         this.offset[j++] = i;
+/*     */       }
+/* 193 */       else if (this.vals[i].charAt(0) == '"') {
+/*     */         
+/* 195 */         this.vals[i] = this.vals[i].substring(1, this.vals[i].lastIndexOf('"'));
+/*     */       } 
+/*     */     } 
+/*     */     
+/* 199 */     this.border = j;
+/*     */ 
+/*     */     
+/* 202 */     if (end == tmpSQL.length()) {
+/*     */       
+/* 204 */       this.where = "(objectClass=*)";
+/* 205 */       this.border = -1;
+/*     */     } else {
+/*     */       
+/* 208 */       begin = end + " where ".length();
+/* 209 */       this.where = con.nativeSQL(sqlArgsToLdap(SQL.substring(begin).trim()));
+/*     */     } 
+/*     */     
+/* 212 */     this.store = new SqlStore(SQL);
+/* 213 */     this.store.setFields(this.fields);
+/* 214 */     this.store.setDistinguishedName(this.from);
+/* 215 */     this.store.setArgs((this.args != null) ? this.args.length : 0);
+/* 216 */     this.store.setInsertFields(this.vals);
+/* 217 */     this.store.setFieldOffset(this.offset);
+/*     */     
+/* 219 */     this.store.setWhere(this.where);
+/* 220 */     this.store.setBorder(this.border);
+/*     */     
+/* 222 */     this.store.setScope(this.scope);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void init(JndiLdapConnection con, String SQL, SqlStore sqlStore) throws SQLException {
+/* 228 */     this.update = (DirectoryUpdate)con.getImplClasses().get("UPDATE");
+/* 229 */     this.con = con;
+/* 230 */     this.store = sqlStore;
+/* 231 */     this.fields = this.store.getFields();
+/* 232 */     this.from = this.store.getDistinguishedName();
+/* 233 */     this.offset = this.store.getFieldOffset();
+/* 234 */     this.where = this.store.getWhere();
+/* 235 */     this.border = this.store.getBorder();
+/* 236 */     this.args = new Object[this.store.getArgs()];
+/* 237 */     this.vals = new String[this.fields.length];
+/* 238 */     this.scope = this.store.getScope();
+/* 239 */     System.arraycopy(sqlStore.getInsertFields(), 0, this.vals, 0, this.vals.length);
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setValue(int pos, String value) throws SQLException {
+/* 249 */     if (pos < this.border || this.border == -1) {
+/* 250 */       if (pos < 0) throw new SQLException(Integer.toString(pos) + " out of bounds"); 
+/* 251 */       this.vals[this.offset[pos]] = value;
+/*     */     } else {
+/*     */       
+/* 254 */       this.args[pos - this.border] = value;
+/*     */     } 
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String[] getVals() {
+/* 263 */     return this.vals;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public JndiLdapConnection getCon() {
+/* 270 */     return this.con;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean isUpdate() {
+/* 278 */     return true;
+/*     */   }
+/*     */ }
 
-/*
- * JdbcLdapUpdate.java
- *
- * Created on May 23, 2002, 1:24 PM
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/sql/statements/JdbcLdapUpdate.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-
-package com.octetstring.jdbcLdap.sql.statements;
-import com.octetstring.jdbcLdap.jndi.*;
-import com.octetstring.jdbcLdap.sql.*;
-import com.octetstring.jdbcLdap.util.TableDef;
-
-import java.sql.*;
-import java.util.*;
-import javax.naming.*;
-import javax.naming.directory.*;
-/**
- *Processes an SQL UPDATE statement
- *@author Marc Boorshtein, OctetString
- */
-public class JdbcLdapUpdate extends com.octetstring.jdbcLdap.sql.statements.JdbcLdapSqlAbs implements com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql {
-    /** A double quote character */
-    static final char QUOTE = '"';
-    
-    /** The default search filter when no filter (or WHERE clause) is specified */
-    static final String DEFAULT_SEARCH_FILTER = "(objectClass=*)";
-    
-    /** performs update */
-    Update update;
-    
-    /** Question Mark */
-    static final String QMARK = "?";
-    
-    /** Equals */
-    static final String EQUALS = "=";
-    
-    /** UPDATE constant */
-    static final String UPDATE = "update";
-    
-    /** SET constant */
-    static final String SET = " set ";
-    
-    /** WHERE constant */
-    static final String WHERE = " where ";
-    
-    /** Comma constant */
-    static final String COMMA = ",";
-    
-    /** Store SQL information */
-    SqlStore store;
-    
-    /** stores fields */
-    String[] fields;
-    
-    /** Vals */
-    String[] vals;
-    
-    /** offset array */
-    int[] offset;
-    
-    
-    /** border value between SET and WHERE */
-    int border;
-    
-    /** Creates a new instance of JdbcLdapUpdate */
-    public JdbcLdapUpdate() {
-        super();
-        update = new Update();
-    }
-    
-    /** Executes the current statement and returns the results  */
-    public Object executeQuery() throws SQLException {
-        throw new SQLException("UPDATE can not execute a query");
-    }
-    
-    public Object executeUpdate() throws SQLException {
-        return new Integer(update.doUpdateJldap(this));
-    }
-    
-    
-    
-    /**
-     * Retrieves if the DN is being returned
-     */
-    public boolean getRetrieveDN() {
-        return false;
-    }
-    
-    /**
-     * Used to retrieve the SqlStore for caching
-     * @return The statments SqlStore object
-     */
-    public SqlStore getSqlStore() {
-        return store;
-    }
-    
-    /** Creates new JdbcLdapSql using a connection and a SQL Statement */
-    public void init(JndiLdapConnection con, String SQL) throws SQLException {
-        this.con = con;
-        String tmpSQL = SQL.toLowerCase();
-        int begin, end,i,j;
-        String sscope;
-        Integer iscope;
-        
-        StringTokenizer toker;
-        String toekn;
-        String field, val;
-        String set;
-        String token;
-        
-        //determine scope a base context
-        begin = tmpSQL.indexOf(UPDATE) + UPDATE.length();
-        end = tmpSQL.indexOf(SET);
-        from = SQL.substring(begin,end).trim();
-        
-        if (con.getTableDefs().containsKey(from)) {
-        	from = ((TableDef) con.getTableDefs().get(from)).getScopeBase();
-        }
-        
-        if (from.indexOf(";") != -1) {
-            sscope = from.substring(0,from.indexOf(";")).trim(); 
-            //System.out.println("sscope : " + sscope);       
-            iscope = (Integer) scopes.get(sscope);
-            from = from.substring(from.indexOf(";")+1);
-            //System.out.println("from : " + from);
-        }
-        else {
-            iscope = (Integer) scopes.get(con.getSearchScope());
-        }
-		
-        if (iscope == null) {
-            throw new SQLException("Unrecognized Search Scope");
-        }
-        
-        scope = iscope.intValue();
-        //System.out.println("scope : " + scope);
-        
-        //break up the SET portion
-        begin = tmpSQL.indexOf(SET) + SET.length();
-        
-        end = tmpSQL.indexOf(WHERE);
-        if (end == -1) {
-            end = tmpSQL.length();
-        }
-        
-        set = SQL.substring(begin,end);
-        
-        LinkedList itok = explodeDN(set);
-        Iterator it;
-        
-        
-        
-        
-        
-        //toker = new StringTokenizer(set,COMMA);
-        
-        fields = new String[itok.size()];
-        vals = new String[itok.size()];
-        offset = new int[itok.size()];
-        it = itok.iterator();
-        for (i=0, j=0;it.hasNext();i++) {
-            token = ((String) it.next()).trim();
-            
-            
-            
-            fields[i] = token.substring(0,token.indexOf(EQUALS));
-            vals[i] = token.substring(token.indexOf(EQUALS) + 1);
-            
-			//temporary
-			if (vals[i].charAt(0) == '"' || vals[i].charAt(0) == '\'') {
-				vals[i] = vals[i].substring(1,vals[i].length()-1);
-			}
-            
-            
-            if (vals[i].equals(QMARK)) {
-				offset[j++] = i;
-            }
-            else if (vals[i].charAt(0) == QUOTE) {
-				
-				vals[i] = vals[i].substring(1,vals[i].lastIndexOf(QUOTE));
-			}
-        }
-        
-        border = j;
-        
-        //determine if there is a "where" clause
-        if (end == tmpSQL.length()) {
-            //no where clause, set where to default
-            where = DEFAULT_SEARCH_FILTER;
-            border = -1;
-        }
-        else {
-            begin = end + WHERE.length();
-            this.where = con.nativeSQL(sqlArgsToLdap(SQL.substring(begin).trim()));
-        }
-        
-        store = new SqlStore(SQL);
-        store.setFields(fields);
-        store.setDistinguishedName(from);
-        store.setArgs(args != null ? this.args.length : 0);
-        store.setInsertFields(vals);
-        store.setFieldOffset(offset);
-        
-        store.setWhere(where);
-        store.setBorder(border);
-        //System.out.println("scope : " + scope);
-        store.setScope(scope);
-        
-    }
-    
-    /** Creates new JdbcLdapSql using a connection, a SQL Statement and a cached SqlStore */
-    public void init(JndiLdapConnection con, String SQL, SqlStore sqlStore) throws SQLException {
-        this.con = con;
-        store = sqlStore;
-        fields = store.getFields();
-        from = store.getDistinguishedName();
-        offset = store.getFieldOffset();
-        where = store.getWhere();
-        border = store.getBorder();
-        args = new Object[store.getArgs()];
-        vals = new String[fields.length];
-        scope = store.getScope();
-	System.arraycopy(sqlStore.getInsertFields(),0,vals,0,vals.length);
-    }
-    
-    /**
-     * Sets the value at position
-     * @param pos Position to set
-     * @param val Value to set
-     */
-    public void setValue(int pos, String value) throws SQLException {
-        //is the argument for SET or WHERE
-        if (pos < border || border==-1) {
-            if (pos < 0) throw new SQLException(Integer.toString(pos) + " out of bounds");
-            vals[offset[pos]] = value;
-        }
-        else {
-            args[pos - border] = value;
-        }
-    }
-    
-    /**
-     *Retrieves values to be inserted
-     *@return array of values to insert
-     */
-     public String[] getVals() {
-	     return vals;
-     }
-     
-     /**
-     *Retrieves Connection
-     */
-    public JndiLdapConnection getCon() {
-	    return con;
-    }
-    
-    /**
-     * Determines if statement is update or select
-     * @return true if is an update
-     */
-    public boolean isUpdate() {
-        return true;
-    }
-    
-}

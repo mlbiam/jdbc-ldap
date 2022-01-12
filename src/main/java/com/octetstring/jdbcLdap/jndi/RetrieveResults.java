@@ -1,163 +1,175 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*     */ package com.octetstring.jdbcLdap.jndi;
+/*     */ 
+/*     */ import com.novell.ldap.LDAPConnection;
+/*     */ import com.novell.ldap.LDAPControl;
+/*     */ import com.novell.ldap.LDAPException;
+/*     */ import com.novell.ldap.LDAPSearchConstraints;
+/*     */ import com.novell.ldap.LDAPSearchResults;
+/*     */ import com.novell.ldap.controls.LDAPSortControl;
+/*     */ import com.novell.ldap.controls.LDAPSortKey;
+/*     */ import com.octetstring.jdbcLdap.backend.DirectoryRetrieveResults;
+/*     */ import com.octetstring.jdbcLdap.sql.statements.JdbcLdapSelect;
+/*     */ import com.octetstring.jdbcLdap.sql.statements.JdbcLdapSqlAbs;
+/*     */ import java.sql.SQLException;
+/*     */ import java.util.HashMap;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class RetrieveResults
+/*     */   implements DirectoryRetrieveResults
+/*     */ {
+/*     */   public Object searchJldap(JdbcLdapSelect select) throws SQLException {
+/*     */     try {
+/*     */       String[] searchAttribs;
+/*  47 */       LDAPConnection con = select.getConnection();
+/*  48 */       String[] fields = select.getSearchAttributes();
+/*  49 */       fields = (fields != null) ? fields : new String[0];
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */       
+/*  54 */       if (fields.length == 1 && fields[0].equalsIgnoreCase("dn")) {
+/*  55 */         searchAttribs = new String[] { "1.1" };
+/*     */       }
+/*     */       else {
+/*     */         
+/*  59 */         searchAttribs = fields;
+/*     */       } 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */       
+/*  69 */       String useBase = JndiLdapConnection.getRealBase((JdbcLdapSqlAbs)select);
+/*     */       
+/*  71 */       String filter = select.getFilterWithParams();
+/*     */ 
+/*     */       
+/*  74 */       LDAPSearchConstraints constraints = null;
+/*     */       
+/*  76 */       if (select.getJDBCConnection().getMaxSizeLimit() >= 0) {
+/*  77 */         constraints = con.getSearchConstraints();
+/*  78 */         constraints.setMaxResults(select.getJDBCConnection().getMaxSizeLimit());
+/*     */       } 
+/*     */       
+/*  81 */       if (select.getJDBCConnection().getMaxTimeLimit() >= 0) {
+/*  82 */         if (constraints == null) {
+/*  83 */           constraints = con.getSearchConstraints();
+/*     */         }
+/*     */         
+/*  86 */         constraints.setTimeLimit(select.getJDBCConnection().getMaxTimeLimit());
+/*     */       } 
+/*     */ 
+/*     */ 
+/*     */       
+/*  91 */       LDAPSortKey[] keys = null;
+/*     */       
+/*  93 */       if (select.getSqlStore().getOrderby() != null) {
+/*  94 */         keys = new LDAPSortKey[(select.getSqlStore().getOrderby()).length];
+/*  95 */         for (int i = 0, m = keys.length; i < m; i++) {
+/*  96 */           keys[i] = new LDAPSortKey(getFieldName(select.getSqlStore().getOrderby()[i], select.getSqlStore().getFieldMap()));
+/*     */         }
+/*     */       } 
+/*     */ 
+/*     */ 
+/*     */       
+/* 102 */       if (select.getJDBCConnection().isDSML() || select.getJDBCConnection().isSPML()) {
+/* 103 */         return con.search(useBase, select.getSearchScope(), filter, searchAttribs, false, constraints);
+/*     */       }
+/*     */       
+/* 106 */       if (keys != null) {
+/* 107 */         constraints.setControls(new LDAPControl[] { (LDAPControl)new LDAPSortControl(keys, true) });
+/*     */       }
+/*     */       
+/* 110 */       return con.search(useBase, select.getSearchScope(), filter, searchAttribs, false, null, constraints);
+/*     */     }
+/* 112 */     catch (LDAPException e) {
+/* 113 */       throw new SQLNamingException(e);
+/*     */     } 
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public LDAPSearchResults searchUpInsJldap(JdbcLdapSqlAbs sql) throws SQLException {
+/*     */     try {
+/* 126 */       LDAPConnection con = sql.getConnection();
+/*     */ 
+/*     */       
+/* 129 */       String useBase = JndiLdapConnection.getRealBase(sql);
+/*     */       
+/* 131 */       String filter = sql.getFilterWithParams();
+/*     */       
+/* 133 */       LDAPSearchConstraints constraints = null;
+/*     */       
+/* 135 */       if (sql.getJDBCConnection().getMaxSizeLimit() >= 0) {
+/* 136 */         constraints = con.getSearchConstraints();
+/* 137 */         constraints.setMaxResults(sql.getJDBCConnection().getMaxSizeLimit());
+/*     */       } 
+/*     */       
+/* 140 */       if (sql.getJDBCConnection().getMaxTimeLimit() >= 0) {
+/* 141 */         if (constraints == null) {
+/* 142 */           constraints = con.getSearchConstraints();
+/*     */         }
+/*     */         
+/* 145 */         constraints.setTimeLimit(sql.getJDBCConnection().getMaxTimeLimit());
+/*     */       } 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */       
+/* 151 */       return con.search(useBase, sql.getSearchScope(), filter, new String[] { "1.1" }, false, constraints);
+/*     */     }
+/* 153 */     catch (LDAPException e) {
+/* 154 */       throw new SQLNamingException(e);
+/*     */     } 
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   private String getFieldName(String name, HashMap revMap) {
+/* 160 */     if (revMap != null) {
+/* 161 */       String nname = (String)revMap.get(name);
+/* 162 */       if (nname != null) {
+/* 163 */         return nname;
+/*     */       }
+/*     */     } 
+/*     */     
+/* 167 */     return name;
+/*     */   }
+/*     */ }
 
-/*
- * RetrieveResults.java
- *
- * Created on March 13, 2002, 5:50 PM
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/jndi/RetrieveResults.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-
-package com.octetstring.jdbcLdap.jndi;
-
-
-import com.octetstring.jdbcLdap.sql.statements.*;
-import java.sql.*;
-import java.util.*;
-
-import com.novell.ldap.*;
-import com.novell.ldap.controls.LDAPSortControl;
-import com.novell.ldap.controls.LDAPSortKey;
-/**
- *Retrieves the results from a qeury
- *@author Marc Boorshtein, OctetString
- */
-public class RetrieveResults {
-    
-    /** Creates new RetrieveResults */
-    public RetrieveResults() {
-    }
-    
-    public Object searchJldap(JdbcLdapSelect select) throws SQLException {
-    	try {
-			LDAPConnection con = select.getConnection();
-			String[] fields = select.getSearchAttributes();
-			fields = fields != null ? fields : new String[0];
-			
-			
-			String[] searchAttribs;
-			
-			if (fields.length == 1 && fields[0].equalsIgnoreCase("dn")) {
-				searchAttribs = new String[] {"1.1"};	
-				
-			}
-			else {
-				searchAttribs = fields;
-			}
-			
-			/*System.out.println("attribs");
-			for (int i=0,m=searchAttribs.length;i<m;i++) {
-				System.out.println("attrib : " + searchAttribs[i]);
-			}*/
-			
-			
-			
-			String useBase = JndiLdapConnection.getRealBase(select);
-			//System.out.println("useBase : " + useBase);
-			String filter = select.getFilterWithParams();
-			//System.out.println("filter : " + filter);
-			
-			LDAPSearchConstraints constraints = null;
-			
-			if (select.getJDBCConnection().getMaxSizeLimit() >= 0) {
-				constraints = con.getSearchConstraints();
-				constraints.setMaxResults(select.getJDBCConnection().getMaxSizeLimit());
-			}
-			
-			if (select.getJDBCConnection().getMaxTimeLimit() >= 0) {
-				if (constraints == null) {
-					constraints = con.getSearchConstraints();
-				}
-				
-				constraints.setTimeLimit(select.getJDBCConnection().getMaxTimeLimit());
-			}
-			
-			
-			
-			LDAPSortKey[] keys = null;
-			
-			if (select.getSqlStore().getOrderby() != null) {
-				keys = new LDAPSortKey[select.getSqlStore().getOrderby().length];
-				for (int i=0,m=keys.length;i<m;i++) {
-					keys[i] = new LDAPSortKey(this.getFieldName(select.getSqlStore().getOrderby()[i],select.getSqlStore().getFieldMap()));
-				}
-			}
-			
-			
-			
-			if (select.getJDBCConnection().isDSML() || select.getJDBCConnection().isSPML()) {
-				return con.search(useBase,select.getSearchScope(),filter,searchAttribs,false,constraints);
-			} else {
-				
-				if (keys != null) {
-					constraints.setControls(new LDAPControl[] {new LDAPSortControl(keys, true)});
-				} 
-				
-				return con.search(useBase,select.getSearchScope(),filter,searchAttribs,false,null,constraints);
-			}
-		} catch (LDAPException e) {
-			throw new SQLNamingException(e);
-		}
-    	
-    }
-    
-    
-    
-    
-    public LDAPSearchResults searchUpInsJldap(JdbcLdapSqlAbs sql) throws SQLException {
-    	try {
-    		LDAPConnection con = sql.getConnection();
-    		
-    		
-    		String useBase = JndiLdapConnection.getRealBase(sql);
-    		
-    		String filter = sql.getFilterWithParams();
-    		
-    		LDAPSearchConstraints constraints = null;
-			
-			if (sql.getJDBCConnection().getMaxSizeLimit() >= 0) {
-				constraints = con.getSearchConstraints();
-				constraints.setMaxResults(sql.getJDBCConnection().getMaxSizeLimit());
-			}
-			
-			if (sql.getJDBCConnection().getMaxTimeLimit() >= 0) {
-				if (constraints == null) {
-					constraints = con.getSearchConstraints();
-				}
-				
-				constraints.setTimeLimit(sql.getJDBCConnection().getMaxTimeLimit());
-			}
-    		
-//	    	System.out.println("sql.getBaseContext() " + sql.getBaseContext());
-//	    	System.out.println("where : " + filter);
-//	    	System.out.println("scope  : " + sql.getSearchScope());
-    		return con.search(useBase,sql.getSearchScope(),filter,new String[] {"1.1"},false,constraints);
-    	}
-    	catch (LDAPException e) {
-    		throw new SQLNamingException(e);
-    	}
-    }
-
-    private String getFieldName(String name,HashMap revMap) {
-		
-		if (revMap != null) {
-			String nname = (String) revMap.get(name);
-			if (nname != null) {
-				return nname;
-			}
-		}
-		
-		return name;
-	}
-    
-}

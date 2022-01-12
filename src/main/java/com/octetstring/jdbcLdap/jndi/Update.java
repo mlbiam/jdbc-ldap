@@ -1,85 +1,96 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*    */ package com.octetstring.jdbcLdap.jndi;
+/*    */ 
+/*    */ import com.novell.ldap.LDAPAttribute;
+/*    */ import com.novell.ldap.LDAPConnection;
+/*    */ import com.novell.ldap.LDAPEntry;
+/*    */ import com.novell.ldap.LDAPException;
+/*    */ import com.novell.ldap.LDAPModification;
+/*    */ import com.novell.ldap.LDAPSearchResults;
+/*    */ import com.octetstring.jdbcLdap.backend.DirectoryRetrieveResults;
+/*    */ import com.octetstring.jdbcLdap.backend.DirectoryUpdate;
+/*    */ import com.octetstring.jdbcLdap.sql.SqlStore;
+/*    */ import com.octetstring.jdbcLdap.sql.statements.JdbcLdapSqlAbs;
+/*    */ import com.octetstring.jdbcLdap.sql.statements.JdbcLdapUpdate;
+/*    */ import java.sql.SQLException;
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ public class Update
+/*    */   implements DirectoryUpdate
+/*    */ {
+/*    */   public int doUpdateJldap(JdbcLdapUpdate update) throws SQLException {
+/* 43 */     DirectoryRetrieveResults res = (DirectoryRetrieveResults)update.getCon().getImplClasses().get("RETRIEVE_RESULTS");
+/* 44 */     LDAPConnection con = update.getConnection();
+/*    */     
+/* 46 */     StringBuffer buf = new StringBuffer();
+/* 47 */     SqlStore store = update.getSqlStore();
+/* 48 */     int count = 0;
+/*    */ 
+/*    */ 
+/*    */     
+/* 52 */     LDAPModification[] mods = new LDAPModification[(store.getFields()).length];
+/* 53 */     String[] fields = store.getFields();
+/* 54 */     String[] vals = update.getVals();
+/*    */     
+/* 56 */     for (int i = 0, m = mods.length; i < m; i++) {
+/* 57 */       mods[i] = new LDAPModification(2, new LDAPAttribute(fields[i], vals[i]));
+/*    */     }
+/*    */     
+/*    */     try {
+/* 61 */       if (update.getSearchScope() != 0) {
+/* 62 */         LDAPSearchResults enumer = res.searchUpInsJldap((JdbcLdapSqlAbs)update);
+/*    */         
+/* 64 */         while (enumer.hasMore()) {
+/* 65 */           LDAPEntry seres = enumer.next();
+/* 66 */           buf.setLength(0);
+/*    */           
+/* 68 */           String name = seres.getDN();
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */           
+/* 73 */           con.modify(name, mods);
+/* 74 */           count++;
+/*    */         } 
+/*    */       } else {
+/*    */         
+/* 78 */         con.modify(update.getBaseContext(), mods);
+/* 79 */         count++;
+/*    */       } 
+/*    */ 
+/*    */ 
+/*    */       
+/* 84 */       return count;
+/*    */     }
+/* 86 */     catch (LDAPException ne) {
+/* 87 */       throw new SQLNamingException(ne);
+/*    */     } 
+/*    */   }
+/*    */ }
 
-/*
- * Update.java
- *
- * Created on May 24, 2002, 12:56 PM
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/jndi/Update.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-
-package com.octetstring.jdbcLdap.jndi;
-
-import com.octetstring.jdbcLdap.sql.statements.*;
-import com.octetstring.jdbcLdap.sql.*;
-import java.sql.*;
-import com.novell.ldap.*;
-/**
- *Contains logic for updating records in the directory
- *@author Marc Boorshtein, OctetString
- */
-public class Update {
-	RetrieveResults res = new RetrieveResults();
-	
-	
-	
-	
-	public int doUpdateJldap(JdbcLdapUpdate update) throws SQLException {
-		LDAPConnection con = update.getConnection();
-		LDAPEntry seres;
-		StringBuffer buf = new StringBuffer();
-		SqlStore store = update.getSqlStore();
-		int count = 0;
-		LDAPModification[] mods;
-		String[] fields,vals;
-		//build ModificationItem array
-		mods = new LDAPModification[store.getFields().length];
-		fields = store.getFields();
-		vals = update.getVals();
-		String name;
-		for (int i=0,m=mods.length;i<m;i++) {
-			mods[i] = new LDAPModification(LDAPModification.REPLACE,new LDAPAttribute(fields[i],vals[i]));
-		}
-		
-		try {
-			if (update.getSearchScope() != 0) {
-				LDAPSearchResults enumer = res.searchUpInsJldap(update);
-				//System.out.println("enum.hasMore : " + enum.hasMore());
-				while (enumer.hasMore()) {
-					seres =  enumer.next();
-					buf.setLength(0);
-					
-					name = seres.getDN();
-					
-					//System.out.println("name : " + name);
-					
-					
-					con.modify(name,mods);
-					count++;
-					//System.out.println("count : " + count);
-				}
-			} else {
-				con.modify(update.getBaseContext(),mods);
-				count++;
-			}
-			
-			
-			//System.out.println("final count : " + count);
-			return count;
-		}
-		catch (LDAPException ne) {
-			throw new SQLNamingException(ne);
-		}
-	}
-	
-}

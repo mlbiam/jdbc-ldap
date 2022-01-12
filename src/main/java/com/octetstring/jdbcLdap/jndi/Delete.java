@@ -1,73 +1,81 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*    */ package com.octetstring.jdbcLdap.jndi;
+/*    */ 
+/*    */ import com.novell.ldap.LDAPConnection;
+/*    */ import com.novell.ldap.LDAPEntry;
+/*    */ import com.novell.ldap.LDAPException;
+/*    */ import com.novell.ldap.LDAPSearchResults;
+/*    */ import com.octetstring.jdbcLdap.backend.DirectoryDelete;
+/*    */ import com.octetstring.jdbcLdap.backend.DirectoryRetrieveResults;
+/*    */ import com.octetstring.jdbcLdap.sql.SqlStore;
+/*    */ import com.octetstring.jdbcLdap.sql.statements.JdbcLdapDelete;
+/*    */ import com.octetstring.jdbcLdap.sql.statements.JdbcLdapSqlAbs;
+/*    */ import java.sql.SQLException;
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ 
+/*    */ public class Delete
+/*    */   implements DirectoryDelete
+/*    */ {
+/*    */   public int doDeleteJldap(JdbcLdapDelete del) throws SQLException {
+/* 40 */     DirectoryRetrieveResults res = (DirectoryRetrieveResults)del.getCon().getImplClasses().get("RETRIEVE_RESULTS");
+/* 41 */     LDAPConnection con = del.getConnection();
+/*    */     
+/* 43 */     StringBuffer buf = new StringBuffer();
+/* 44 */     SqlStore store = del.getSqlStore();
+/* 45 */     int count = 0;
+/*    */     
+/* 47 */     if (store.getSimple()) {
+/*    */       try {
+/* 49 */         con.delete(JndiLdapConnection.getRealBase((JdbcLdapSqlAbs)del));
+/*    */       }
+/* 51 */       catch (LDAPException ne) {
+/* 52 */         throw new SQLNamingException(ne);
+/*    */       } 
+/*    */       
+/* 55 */       return 1;
+/*    */     } 
+/*    */ 
+/*    */     
+/*    */     try {
+/* 60 */       LDAPSearchResults enumer = res.searchUpInsJldap((JdbcLdapSqlAbs)del);
+/* 61 */       while (enumer.hasMore()) {
+/* 62 */         LDAPEntry entry = enumer.next();
+/* 63 */         con.delete(entry.getDN());
+/* 64 */         count++;
+/*    */       } 
+/*    */ 
+/*    */ 
+/*    */       
+/* 69 */       return count;
+/*    */     }
+/* 71 */     catch (LDAPException ne) {
+/* 72 */       throw new SQLNamingException(ne);
+/*    */     } 
+/*    */   }
+/*    */ }
 
-/*
- * Delete.java
- *
- * Created on March 13, 2002, 5:50 PM
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/jndi/Delete.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-
-package com.octetstring.jdbcLdap.jndi;
-
-
-import com.octetstring.jdbcLdap.sql.statements.*;
-import com.octetstring.jdbcLdap.sql.*;
-import java.sql.*;
-import com.novell.ldap.*;
-/**
- *Deletes an entry
- *@author Marc Boorshtein, OctetString
- */
-public class Delete {
-	RetrieveResults res = new RetrieveResults();
-
-
-	
-	public int doDeleteJldap(JdbcLdapDelete del) throws SQLException {
-		LDAPConnection con = del.getConnection();
-		
-		StringBuffer buf = new StringBuffer();
-		SqlStore store = del.getSqlStore();
-		int count = 0;
-		//System.out.println("from : " + store.getFrom());
-		if (store.getSimple()) {
-			try {
-				con.delete(JndiLdapConnection.getRealBase(del));
-			}
-			catch (LDAPException ne) {
-				throw new SQLNamingException(ne);
-			}
-			
-			return 1;
-		}
-		else {
-			try {
-				
-				LDAPSearchResults enumer = res.searchUpInsJldap(del);
-				while (enumer.hasMore()) {
-					LDAPEntry entry = enumer.next(); 
-					con.delete(entry.getDN());
-					count++;
-				}
-				
-				
-				
-				return count;
-			}
-			catch (LDAPException ne) {
-				throw new SQLNamingException(ne);
-			}
-		}
-	}
-}

@@ -1,447 +1,453 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
+/*     */ package com.octetstring.jdbcLdap.sql;
+/*     */ 
+/*     */ import java.util.ArrayList;
+/*     */ import java.util.HashMap;
+/*     */ import java.util.LinkedList;
+/*     */ import java.util.Set;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class SqlStore
+/*     */ {
+/*     */   String sql;
+/*     */   String where;
+/*     */   String from;
+/*     */   boolean simple;
+/*     */   String[] fields;
+/*     */   boolean getDN;
+/*     */   int scope;
+/*     */   int numArgs;
+/*     */   String[] insertFields;
+/*     */   String dn;
+/*     */   int[] fieldOffset;
+/*     */   int border;
+/*     */   LinkedList fieldsMap;
+/*     */   String[] dnfields;
+/*     */   String command;
+/*     */   LinkedList attribs;
+/*     */   LinkedList cmds;
+/*     */   ArrayList offsetList;
+/*     */   String[] orderby;
+/*     */   HashMap fieldMap;
+/*     */   HashMap revFieldMap;
+/*     */   private Set dontAdd;
+/*     */   private String defOC;
+/*     */   
+/*     */   public String[] getOrderby() {
+/*  97 */     return this.orderby;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setOrderby(String[] orderby) {
+/* 103 */     this.orderby = orderby;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public SqlStore(String sql) {
+/* 110 */     this.sql = sql;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setWhere(String where) {
+/* 119 */     this.where = where;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getWhere() {
+/* 127 */     return this.where;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setFrom(String from) {
+/* 135 */     this.from = from;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getFrom() {
+/* 143 */     return this.from;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setFields(String[] fields) {
+/* 151 */     this.fields = fields;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String[] getFields() {
+/* 159 */     return this.fields;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setDN(boolean dn) {
+/* 167 */     this.getDN = dn;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean getDN() {
+/* 175 */     return this.getDN;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setDistinguishedName(String dn) {
+/* 183 */     this.dn = dn;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getDistinguishedName() {
+/* 191 */     return this.dn;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setScope(int scope) {
+/* 199 */     this.scope = scope;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public int getScope() {
+/* 207 */     return this.scope;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setArgs(int args) {
+/* 215 */     this.numArgs = args;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public int getArgs() {
+/* 223 */     return this.numArgs;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setInsertFields(String[] fields) {
+/* 231 */     this.insertFields = fields;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String[] getInsertFields() {
+/* 239 */     return this.insertFields;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public int[] getFieldOffset() {
+/* 247 */     return this.fieldOffset;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setFieldOffset(int[] offset) {
+/* 255 */     this.fieldOffset = offset;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setSimple(boolean simple) {
+/* 263 */     this.simple = simple;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean getSimple() {
+/* 271 */     return this.simple;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setBorder(int border) {
+/* 279 */     this.border = border;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public int getBorder() {
+/* 287 */     return this.border;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getSQL() {
+/* 295 */     return this.sql;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setFieldsMap(LinkedList fieldsMap) {
+/* 303 */     this.fieldsMap = fieldsMap;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public LinkedList getFieldsMap() {
+/* 311 */     return this.fieldsMap;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setDnFields(String[] dnFields) {
+/* 319 */     this.dnfields = dnFields;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String[] getDnFields() {
+/* 327 */     return this.dnfields;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getCommand() {
+/* 335 */     return this.command;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setCommand(String cmd) {
+/* 343 */     this.command = cmd;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public LinkedList getAttribs() {
+/* 350 */     return this.attribs;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setAttribs(LinkedList list) {
+/* 363 */     this.attribs = list;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public LinkedList getCmds() {
+/* 373 */     return this.cmds;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setCmds(LinkedList list) {
+/* 380 */     this.cmds = list;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public ArrayList getOffsetList() {
+/* 387 */     return this.offsetList;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setOffsetList(ArrayList offsetList) {
+/* 394 */     this.offsetList = offsetList;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public HashMap getFieldMap() {
+/* 401 */     return this.fieldMap;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setFieldMap(HashMap fieldMap) {
+/* 407 */     this.fieldMap = fieldMap;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public HashMap getRevFieldMap() {
+/* 413 */     return this.revFieldMap;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setRevFieldMap(HashMap revFieldMap) {
+/* 419 */     this.revFieldMap = revFieldMap;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setDontAdd(Set set) {
+/* 425 */     this.dontAdd = set;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public Set getDontAdd() {
+/* 432 */     return this.dontAdd;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setDefaultOC(String string) {
+/* 438 */     this.defOC = string;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getDefOC() {
+/* 445 */     return this.defOC;
+/*     */   }
+/*     */ }
 
-package com.octetstring.jdbcLdap.sql;
 
-import java.util.*;
-/**
- *This  class stores the basic information shared by SQL Statements
- *@author Marc Boorshtein, OctetString
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/sql/SqlStore.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-public class SqlStore {
-
-    /** SQL Statement being used */
-    String sql;
-    
-    /** Where clasuse, in ldap form */
-    String where;
-    
-    /** From clause, aka the base context */
-    String from;
-    
-    /** Determines if the statement is simple */
-    boolean simple;
-    
-    /** Fields to return **/
-    String[] fields;
-    
-    /** Determines if DN is in the field list */
-    boolean getDN;
-    
-    /** Determines the search scope */
-    int scope;
-    
-    /** Determines howmany arguments there are */
-    int numArgs;
-    
-    /** Contains data to update/insert */
-    String[] insertFields;
-    
-    /** Distinguished Name */
-    String dn;
-    
-    /** Contains field offset information */
-    int fieldOffset[];
-    
-    /** argumnet in border of SET and WHERE */
-    int border;
-    
-    /** List of field, value pairs */
-    LinkedList fieldsMap;
-    
-    /** Contains fields of a DN */
-    String[] dnfields;
-    
-    /** Stores a modify command */
-    String command;
-    
-    /** stores the arguments to be handled */
-    LinkedList attribs;
-    
-    
-    
-    
-    
-	/** stores modify commands */
-	LinkedList cmds;
-   
-	/** Stores a list of offsets */
-	ArrayList offsetList;
-    
-    String[] orderby;
-    
-    HashMap fieldMap;
-    
-    HashMap revFieldMap;
-
-	private Set dontAdd;
-
-	private String defOC;
-	
-	
-	/**
-	 * @return Returns the orderby.
-	 */
-	public String[] getOrderby() {
-		return orderby;
-	}
-	/**
-	 * @param orderby The orderby to set.
-	 */
-	public void setOrderby(String[] orderby) {
-		this.orderby = orderby;
-	}
-    /**
-     *Creates a new SqlStore
-     *@param sql SQL statement being used
-     */
-    public SqlStore(String sql) {
-        this.sql = sql;
-    }
-    
-    
-    /**
-     *Sets the WHERE clause of a SQL statement
-     *@param where WHERE clasuse
-     */
-    public void setWhere(String where) {
-        this.where = where;
-    }
-    
-    /**
-     *Retrieves the WHERE clause of the SQL statement
-     *@return WHERE clause of SQL
-     */
-     public String getWhere() {
-        return this.where;
-     }
-     
-     /**
-     *Sets the FROM clause of a SQL statement
-     *@param from FROM clasuse
-     */
-    public void setFrom(String from) {
-        this.from = from;
-    }
-    
-    /**
-     *Retrieves the FROM clause of the SQL statement
-     *@return FROM clause of SQL
-     */
-     public String getFrom() {
-        return this.from;
-     }
-     
-     /**
-     *Sets the Fields used in the SQL statement
-     *@param fields Fields retrieved
-     */
-    public void setFields(String[] fields) {
-        this.fields = fields;
-    }
-    
-    /**
-     *Retrieves the Fields usede by the SQL statement
-     *@return Fields of the SQL
-     */
-     public String[] getFields() {
-        return this.fields;
-     }
-     
-     /**
-     *Sets if the DN is being retrieved
-     *@param dn true if the DN is a field
-     */
-    public void setDN(boolean dn) {
-        this.getDN = dn;
-    }
-    
-    /**
-     *Gets if the DN is being retrieved
-     *@return true if the DN is a field
-     */
-     public boolean getDN() {
-        return this.getDN;
-     }
-     
-     /**
-     *Sets the DN
-     *@param dn the DN
-     */
-    public void setDistinguishedName(String dn) {
-        this.dn = dn;
-    }
-    
-    /**
-     *Gets the DN
-     *@return the dn
-     */
-     public String getDistinguishedName() {
-        return dn;
-     }
-     
-     /**
-     *Sets the scope of a search
-     *@param scope Scope of search
-     */
-    public void setScope(int scope) {
-        this.scope = scope;
-    }
-    
-    /**
-     *Gets the scope of a search
-     *@return Scope of search
-     */
-     public int getScope() {
-        return this.scope;
-     }
-     
-     /**
-     *Sets the number of arguments in a SQL statement
-     *@param args Number of arguments
-     */
-    public void setArgs(int args) {
-        this.numArgs = args;
-    }
-    
-    /**
-     *Gets the number of arguments in a SQL statement
-     *@return Number of arguments
-     */
-     public int getArgs() {
-        return this.numArgs;
-     }
-     
-     /**
-     *Sets the data in the fields to be written
-     *@param fields Array of data to be written, '?' indicates a parameter
-     */
-     public void setInsertFields(String[] fields) {
-	     this.insertFields = fields;
-     }
-     
-     /**
-     *Retrieves the data in the fields to be written
-     *@return Array of data to be written, '?' indicates a parameter
-     */
-     public String[] getInsertFields() {
-	     return this.insertFields;
-     }
-     
-     /**
-     *Retrieves the offset for fields
-     *@return offset array
-     */
-     public int[] getFieldOffset() {
-	    return this.fieldOffset;
-     }
-     
-     /**
-     *Sets the offset for fields
-     *@param offest offset array
-     */
-     public void setFieldOffset(int[] offset) {
-	     this.fieldOffset = offset;
-     }
-     
-     /**
-      *Sets if statement is simple
-      *@param simple Is it simple?
-      */
-     public void setSimple(boolean simple) {
-	this.simple = simple;     
-     }
-     
-     /**
-      *Gets if statement is simple
-      *@return simple Is it simple?
-      */
-     public boolean getSimple() {
-	return simple;     
-     }
-     
-     /**
-      *Sets the border between SET and WHERE
-      *@param border last number for arguments
-      */
-     public void setBorder(int border) {
-        this.border = border;
-     }
-     
-     /**
-      *Gets the border between SET and WHERE
-      *@return last number for arguments
-      */
-     public int getBorder() {
-        return border;
-     }
-     
-     /**
-      *Returns the sql string
-      *@return SQL string
-      */
-     public String getSQL() {
-         return this.sql;
-     }
-     
-     /**
-      *Sets the fields Map
-      *@param fieldsMap The Map
-      */
-     public void setFieldsMap(LinkedList fieldsMap) {
-         this.fieldsMap = fieldsMap;
-     }
-     
-     /**
-      *Returns the field,value map
-      *@return map
-      */
-     public LinkedList getFieldsMap() {
-         return this.fieldsMap;
-     }
-     
-     /**
-      *Sets the fields of the dn
-      *@param fieldsDN Array of field names
-      */
-     public void setDnFields(String[] dnFields) {
-         this.dnfields = dnFields;
-     }
-     
-     /**
-      *Retrieves the fields of the dn
-      *@return fields in the domain
-      */
-     public String[] getDnFields() {
-         return this.dnfields;
-     }
-     
-	/**
-	 * Retrieves a modify's command
-	 * @return The command
-	 */
-	public String getCommand() {
-		return command;
-	}
-
-	/**
-	 * Sets a modify's command
-	 * @param cmd The command
-	 */
-	public void setCommand(String cmd) {
-		command = cmd;
-	}
-
-	/**
-	 * @return
-	 */
-	public LinkedList getAttribs() {
-		return attribs;
-	}
-
-	
-
-	
-
-	
-
-	/**
-	 * @param list
-	 */
-	public void setAttribs(LinkedList list) {
-		attribs = list;
-	}
-
-	
-	
-
-	/**
-	 * @return
-	 */
-	public LinkedList getCmds() {
-		return cmds;
-	}
-
-	/**
-	 * @param list
-	 */
-	public void setCmds(LinkedList list) {
-		cmds = list;
-	}
-
-	/**
-	 * @return Returns the offsetList.
-	 */
-	public ArrayList getOffsetList() {
-		return offsetList;
-	}
-
-	/**
-	 * @param offsetList The offsetList to set.
-	 */
-	public void setOffsetList(ArrayList offsetList) {
-		this.offsetList = offsetList;
-	}
-
-	/**
-	 * @return Returns the fieldStore.
-	 */
-	public HashMap getFieldMap() {
-		return fieldMap;
-	}
-	/**
-	 * @param fieldStore The fieldStore to set.
-	 */
-	public void setFieldMap(HashMap fieldMap) {
-		this.fieldMap = fieldMap;
-	}
-	/**
-	 * @return Returns the revFieldMap.
-	 */
-	public HashMap getRevFieldMap() {
-		return revFieldMap;
-	}
-	/**
-	 * @param revFieldMap The revFieldMap to set.
-	 */
-	public void setRevFieldMap(HashMap revFieldMap) {
-		this.revFieldMap = revFieldMap;
-	}
-	/**
-	 * @param set
-	 */
-	public void setDontAdd(Set set) {
-		this.dontAdd = set;
-		
-	}
-	/**
-	 * @return
-	 */
-	public Set getDontAdd() {
-		return this.dontAdd;
-	}
-	/**
-	 * @param string
-	 */
-	public void setDefaultOC(String string) {
-		this.defOC = string;
-		
-	}
-	/**
-	 * @return
-	 */
-	public String getDefOC() {
-		return this.defOC;
-	}
-}

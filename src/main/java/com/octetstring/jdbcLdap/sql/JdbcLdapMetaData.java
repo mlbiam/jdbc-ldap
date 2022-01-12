@@ -1,161 +1,160 @@
-/* **************************************************************************
- *
- * Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
- *
- * THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
- * TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
- * TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
- * AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
- * IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
- * OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
- * PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
- * COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
- ******************************************************************************/
-
-/*
- * JdbcLdapMetaData.java
- *
- * Created on March 15, 2002, 4:07 PM
- */
-
-package com.octetstring.jdbcLdap.sql;
-
-import java.sql.*;
-import java.util.*;
-import com.octetstring.jdbcLdap.jndi.*;
-
-/**
- *Holds the metadata of the table
- *@author Marc Boorshtein, OctetString
- */
-public class JdbcLdapMetaData implements java.sql.ResultSetMetaData {
-
-    
-    
-    /** BaseDN used for search */
-    String baseDN;
-    
-    
-
-	private UnpackResults unpack;
-    
-    /** Creates new JdbcsResultSelect */
-    public JdbcLdapMetaData(UnpackResults unpack, String baseDN) {
-        this.unpack = unpack;
-    }
-
-    
-    
-    public java.lang.String getCatalogName(int param) throws java.sql.SQLException {
-        return ((String) unpack.getFieldNames().get(param));
-    }
-    
-    public java.lang.String getColumnClassName(int param) throws java.sql.SQLException {
-        //TODO:Implement stronger detection
-        return "java.lang.String";
-    }
-    
-    public int getColumnCount() throws java.sql.SQLException {
-        return (unpack.getFieldNames().size());
-    }
-    
-    public int getColumnDisplaySize(int param) throws java.sql.SQLException {
-        return -1;
-    }
-    
-    public java.lang.String getColumnLabel(int param) throws java.sql.SQLException {
-        return getCatalogName(param-1);
-    }
-    
-    public java.lang.String getColumnName(int param) throws java.sql.SQLException {
-        return getCatalogName(param -1);
-    }
-    
-    public int getColumnType(int param) throws java.sql.SQLException {
-        return ((Integer) unpack.getFieldTypes().get(param-1)).intValue();
-    }
-    
-    
-    public java.lang.String getColumnTypeName(int param) throws java.sql.SQLException {
-        int coltype = ((Integer) unpack.getFieldTypes().get(param-1)).intValue();
-        switch (coltype) {
-            case Types.VARCHAR : return "VARCHAR";
-            case Types.DOUBLE : return "DOUBLE";
-            case Types.INTEGER : return "INTEGER";
-            case Types.DATE : return "DATE";
-            case Types.TIME : return "TIME";
-            case Types.TIMESTAMP : return "TIMESTAMP";
-            default :throw new SQLException("Illegal Type");
-        }
-    }
-    
-    
-    public int getPrecision(int param) throws java.sql.SQLException {
-        return 0;
-    }
-    
-    public int getScale(int param) throws java.sql.SQLException {
-        return 0;
-    }
-    
-    public java.lang.String getSchemaName(int param) throws java.sql.SQLException {
-        return "";
-    }
-    
-    public java.lang.String getTableName(int param) throws java.sql.SQLException {
-        return baseDN;
-    }
-    
-    public boolean isAutoIncrement(int param) throws java.sql.SQLException {
-        return false;
-    }
-    
-    public boolean isCaseSensitive(int param) throws java.sql.SQLException {
-        return false;
-    }
-    
-    public boolean isCurrency(int param) throws java.sql.SQLException {
-        return false;
-    }
-    
-    public boolean isDefinitelyWritable(int param) throws java.sql.SQLException {
-        return false;
-    }
-    
-    public int isNullable(int param) throws java.sql.SQLException {
-        return 0;
-    }
-    
-    public boolean isReadOnly(int param) throws java.sql.SQLException {
-        return true;
-    }
-    
-    public boolean isSearchable(int param) throws java.sql.SQLException {
-        return false;
-    }
-    
-    public boolean isSigned(int param) throws java.sql.SQLException {
-        return false;
-    }
-    
-    public boolean isWritable(int param) throws java.sql.SQLException {
-        return false;
-    }
-
-
-
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-
-
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        // TODO Auto-generated method stub
-        return false;
-    }
-    
+/*     */ package com.octetstring.jdbcLdap.sql;
+/*     */ 
+/*     */ import com.octetstring.jdbcLdap.jndi.UnpackResults;
+/*     */ import java.sql.ResultSetMetaData;
+/*     */ import java.sql.SQLException;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class JdbcLdapMetaData
+/*     */   implements ResultSetMetaData
+/*     */ {
+/*     */   String baseDN;
+/*     */   private UnpackResults unpack;
+/*     */   
+/*     */   public JdbcLdapMetaData(UnpackResults unpack, String baseDN) {
+/*  44 */     this.unpack = unpack;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getCatalogName(int param) throws SQLException {
+/*  50 */     return (String) this.unpack.getFieldNames().get(param);
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public String getColumnClassName(int param) throws SQLException {
+/*  55 */     return "java.lang.String";
+/*     */   }
+/*     */   
+/*     */   public int getColumnCount() throws SQLException {
+/*  59 */     return this.unpack.getFieldNames().size();
+/*     */   }
+/*     */   
+/*     */   public int getColumnDisplaySize(int param) throws SQLException {
+/*  63 */     return -1;
+/*     */   }
+/*     */   
+/*     */   public String getColumnLabel(int param) throws SQLException {
+/*  67 */     return getCatalogName(param - 1);
+/*     */   }
+/*     */   
+/*     */   public String getColumnName(int param) throws SQLException {
+/*  71 */     return getCatalogName(param - 1);
+/*     */   }
+/*     */   
+/*     */   public int getColumnType(int param) throws SQLException {
+/*  75 */     return ((Integer)this.unpack.getFieldTypes().get(param - 1)).intValue();
+/*     */   }
+/*     */ 
+/*     */   
+/*     */   public String getColumnTypeName(int param) throws SQLException {
+/*  80 */     int coltype = ((Integer)this.unpack.getFieldTypes().get(param - 1)).intValue();
+/*  81 */     switch (coltype) { case 12:
+/*  82 */         return "VARCHAR";
+/*  83 */       case 8: return "DOUBLE";
+/*  84 */       case 4: return "INTEGER";
+/*  85 */       case 91: return "DATE";
+/*  86 */       case 92: return "TIME";
+/*  87 */       case 93: return "TIMESTAMP"; }
+/*  88 */      throw new SQLException("Illegal Type");
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public int getPrecision(int param) throws SQLException {
+/*  94 */     return 0;
+/*     */   }
+/*     */   
+/*     */   public int getScale(int param) throws SQLException {
+/*  98 */     return 0;
+/*     */   }
+/*     */   
+/*     */   public String getSchemaName(int param) throws SQLException {
+/* 102 */     return "";
+/*     */   }
+/*     */   
+/*     */   public String getTableName(int param) throws SQLException {
+/* 106 */     return this.baseDN;
+/*     */   }
+/*     */   
+/*     */   public boolean isAutoIncrement(int param) throws SQLException {
+/* 110 */     return false;
+/*     */   }
+/*     */   
+/*     */   public boolean isCaseSensitive(int param) throws SQLException {
+/* 114 */     return false;
+/*     */   }
+/*     */   
+/*     */   public boolean isCurrency(int param) throws SQLException {
+/* 118 */     return false;
+/*     */   }
+/*     */   
+/*     */   public boolean isDefinitelyWritable(int param) throws SQLException {
+/* 122 */     return false;
+/*     */   }
+/*     */   
+/*     */   public int isNullable(int param) throws SQLException {
+/* 126 */     return 0;
+/*     */   }
+/*     */   
+/*     */   public boolean isReadOnly(int param) throws SQLException {
+/* 130 */     return true;
+/*     */   }
+/*     */   
+/*     */   public boolean isSearchable(int param) throws SQLException {
+/* 134 */     return false;
+/*     */   }
+/*     */   
+/*     */   public boolean isSigned(int param) throws SQLException {
+/* 138 */     return false;
+/*     */   }
+/*     */   
+/*     */   public boolean isWritable(int param) throws SQLException {
+/* 142 */     return false;
+/*     */   }
+/*     */
+@Override
+public <T> T unwrap(Class<T> iface) throws SQLException {
+    // TODO Auto-generated method stub
+    return null;
 }
+@Override
+public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    // TODO Auto-generated method stub
+    return false;
+} }
+
+
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/sql/JdbcLdapMetaData.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
+ */

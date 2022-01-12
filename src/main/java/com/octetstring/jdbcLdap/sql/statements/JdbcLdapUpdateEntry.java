@@ -1,394 +1,403 @@
-/* **************************************************************************
-*
-* Copyright (C) 2002-2005 Octet String, Inc. All Rights Reserved.
-*
-* THIS WORK IS SUBJECT TO U.S. AND INTERNATIONAL COPYRIGHT LAWS AND
-* TREATIES. USE, MODIFICATION, AND REDISTRIBUTION OF THIS WORK IS SUBJECT
-* TO VERSION 2.0.1 OF THE OPENLDAP PUBLIC LICENSE, A COPY OF WHICH IS
-* AVAILABLE AT HTTP://WWW.OPENLDAP.ORG/LICENSE.HTML OR IN THE FILE "LICENSE"
-* IN THE TOP-LEVEL DIRECTORY OF THE DISTRIBUTION. ANY USE OR EXPLOITATION
-* OF THIS WORK OTHER THAN AS AUTHORIZED IN VERSION 2.0.1 OF THE OPENLDAP
-* PUBLIC LICENSE, OR OTHER PRIOR WRITTEN CONSENT FROM OCTET STRING, INC., 
-* COULD SUBJECT THE PERPETRATOR TO CRIMINAL AND CIVIL LIABILITY.
-******************************************************************************/
-package com.octetstring.jdbcLdap.sql.statements;
+/*     */ package com.octetstring.jdbcLdap.sql.statements;
+/*     */ 
+/*     */ import com.octetstring.jdbcLdap.backend.DirectoryUpdateEntry;
+/*     */ import com.octetstring.jdbcLdap.jndi.JndiLdapConnection;
+/*     */ import com.octetstring.jdbcLdap.sql.SqlStore;
+/*     */ import com.octetstring.jdbcLdap.util.Pair;
+/*     */ import com.octetstring.jdbcLdap.util.TableDef;
+/*     */ import com.octetstring.jdbcLdap.util.UpdateSet;
+/*     */ import java.sql.SQLException;
+/*     */ import java.util.ArrayList;
+/*     */ import java.util.Iterator;
+/*     */ import java.util.LinkedList;
+/*     */ import java.util.StringTokenizer;
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ public class JdbcLdapUpdateEntry
+/*     */   extends JdbcLdapSqlAbs
+/*     */   implements JdbcLdapSql
+/*     */ {
+/*     */   public static final String UPDATE_ENTRY = "update entry";
+/*     */   public static final String DELETE = "delete";
+/*     */   public static final String ADD = "add";
+/*     */   public static final String REPLACE = "replace";
+/*     */   public static final String WHERE = " where ";
+/*     */   public static final String DO = " do ";
+/*     */   public static final String SET = " set ";
+/*     */   public static final String QMARK = "?";
+/*     */   public static final String SEMI_COLON = ";";
+/*     */   String cmd;
+/*     */   LinkedList cmds;
+/*     */   int numArgs;
+/*     */   String[] argVals;
+/*     */   SqlStore sqlStore;
+/*     */   ArrayList offset;
+/*     */   LinkedList attribs;
+/*     */   private DirectoryUpdateEntry ue;
+/*     */   
+/*     */   public void init(JndiLdapConnection con, String SQL) throws SQLException {
+/* 100 */     this.ue = (DirectoryUpdateEntry)con.getImplClasses().get("UpdateEntry");
+/*     */ 
+/*     */     
+/* 103 */     int paramcount = 0;
+/*     */     
+/* 105 */     this.cmds = new LinkedList();
+/*     */ 
+/*     */     
+/* 108 */     boolean hasWhere = true;
+/*     */ 
+/*     */     
+/* 111 */     String lsql = SQL.toLowerCase();
+/* 112 */     int begin = lsql.indexOf("update entry") + "update entry".length();
+/* 113 */     int end = lsql.indexOf(" do ");
+/* 114 */     String dn = SQL.substring(begin, end).trim();
+/*     */     
+/* 116 */     if (con.getTableDefs().containsKey(dn)) {
+/* 117 */       dn = ((TableDef)con.getTableDefs().get(dn)).getScopeBase();
+/*     */     }
+/*     */ 
+/*     */     
+/* 121 */     this.where = null;
+/*     */     
+/* 123 */     int semi = dn.indexOf(";");
+/*     */     
+/* 125 */     if (semi != -1) {
+/* 126 */       String sscope = dn.substring(0, semi);
+/* 127 */       dn = dn.substring(semi + 1);
+/* 128 */       Integer iscope = (Integer)this.scopes.get(sscope);
+/* 129 */       if (iscope != null) {
+/* 130 */         this.scope = iscope.intValue();
+/*     */       } else {
+/*     */         
+/* 133 */         iscope = (Integer)this.scopes.get(con.getScope());
+/* 134 */         if (iscope == null) {
+/* 135 */           throw new SQLException("Invalid search scope : " + con.getScope());
+/*     */         }
+/* 137 */         this.scope = iscope.intValue();
+/*     */       } 
+/*     */     } else {
+/*     */       
+/* 141 */       Integer iscope = (Integer)this.scopes.get(con.getScope());
+/* 142 */       if (iscope == null) {
+/* 143 */         throw new SQLException("Invalid search scope : " + con.getScope());
+/*     */       }
+/* 145 */       this.scope = iscope.intValue();
+/*     */     } 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 153 */     begin = end;
+/* 154 */     end = lsql.indexOf(" where ");
+/* 155 */     if (end == -1) {
+/* 156 */       hasWhere = false;
+/* 157 */       end = lsql.length();
+/*     */     } 
+/*     */     
+/* 160 */     int whereIndex = end;
+/*     */     
+/* 162 */     String cmdSQL = SQL.substring(begin, end);
+/* 163 */     String lCmdSql = cmdSQL.toLowerCase();
+/*     */     
+/* 165 */     boolean ok = true;
+/* 166 */     begin = 0;
+/* 167 */     this.offset = new ArrayList();
+/* 168 */     int params = 0;
+/* 169 */     while (ok) {
+/*     */ 
+/*     */ 
+/*     */       
+/* 173 */       begin = lCmdSql.indexOf(" do ", begin) + " do ".length();
+/*     */       
+/* 175 */       end = lCmdSql.indexOf(" set ", begin);
+/*     */       
+/* 177 */       String cmd = cmdSQL.substring(begin, end).trim();
+/*     */ 
+/*     */       
+/* 180 */       begin = lCmdSql.indexOf(" set ", end) + " set ".length();
+/*     */ 
+/*     */       
+/* 183 */       end = lCmdSql.indexOf(" do ", begin);
+/* 184 */       if (end == -1) {
+/* 185 */         ok = false;
+/* 186 */         end = lCmdSql.length();
+/*     */       } 
+/*     */ 
+/*     */       
+/* 190 */       String attribs = cmdSQL.substring(begin, end);
+/*     */ 
+/*     */       
+/* 193 */       if (ok) {
+/* 194 */         begin = end;
+/*     */       }
+/*     */ 
+/*     */ 
+/*     */       
+/* 199 */       ArrayList<Pair> attribList = new ArrayList(5);
+/* 200 */       this.cmds.add(new UpdateSet(cmd, attribList));
+/* 201 */       if (cmd.equalsIgnoreCase("add") || cmd.equalsIgnoreCase("replace")) {
+/*     */ 
+/*     */         
+/* 204 */         LinkedList attribsExploded = explodeDN(attribs);
+/*     */         
+/* 206 */         Iterator<String> itoker = attribsExploded.iterator();
+/* 207 */         while (itoker.hasNext()) {
+/*     */           
+/* 209 */           String attr = itoker.next();
+/*     */           
+/* 211 */           String attribName = attr.substring(0, attr.indexOf("="));
+/* 212 */           String attribValue = attr.substring(attr.indexOf("=") + 1);
+/*     */           
+/* 214 */           if (attribValue.charAt(0) == '"' || attribValue.charAt(0) == '\'') {
+/* 215 */             attribValue = attribValue.substring(1, attribValue.length() - 1);
+/*     */           }
+/*     */           
+/* 218 */           if (attribValue.trim().equals("?")) {
+/* 219 */             this.offset.add(new Integer(params++));
+/*     */           }
+/*     */           
+/* 222 */           attribList.add(new Pair(attribName.trim(), attribValue));
+/*     */         } 
+/*     */ 
+/*     */         
+/*     */         continue;
+/*     */       } 
+/*     */ 
+/*     */       
+/* 230 */       StringTokenizer toker = new StringTokenizer(attribs, ",", false);
+/* 231 */       while (toker.hasMoreTokens()) {
+/* 232 */         String attr = toker.nextToken();
+/* 233 */         if (attr.indexOf('=') != -1) {
+/* 234 */           String attribName = attr.substring(0, attr.indexOf("="));
+/* 235 */           String attribValue = attr.substring(attr.indexOf("=") + 1);
+/* 236 */           attribList.add(new Pair(attribName.trim(), attribValue.trim())); continue;
+/*     */         } 
+/* 238 */         attribList.add(new Pair(attr.trim(),""));
+/*     */       } 
+/*     */     } 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */     
+/* 247 */     if (hasWhere) {
+/* 248 */       begin = whereIndex + " where ".length();
+/* 249 */       this.where = con.nativeSQL(sqlArgsToLdap(SQL.substring(begin).trim()));
+/*     */     } 
+/*     */ 
+/*     */ 
+/*     */     
+/* 254 */     this.sqlStore = new SqlStore(SQL);
+/* 255 */     this.sqlStore.setDistinguishedName(dn);
+/*     */ 
+/*     */ 
+/*     */     
+/* 259 */     this.numArgs = this.offset.size();
+/*     */     
+/* 261 */     this.argVals = new String[this.numArgs];
+/* 262 */     this.from = dn;
+/* 263 */     this.sqlStore.setScope(this.scope);
+/*     */     
+/* 265 */     this.sqlStore.setCommand(this.cmd);
+/* 266 */     this.sqlStore.setArgs(this.numArgs);
+/* 267 */     this.sqlStore.setAttribs(this.attribs);
+/*     */     
+/* 269 */     this.sqlStore.setCmds(this.cmds);
+/* 270 */     this.sqlStore.setOffsetList(this.offset);
+/* 271 */     if (this.where == null || this.where.trim().length() == 0) {
+/* 272 */       this.where = "(objectClass=*)";
+/*     */     }
+/*     */     
+/* 275 */     this.sqlStore.setWhere(this.where);
+/* 276 */     this.con = con;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void init(JndiLdapConnection con, String SQL, SqlStore sqlStore) throws SQLException {
+/* 285 */     this.ue = (DirectoryUpdateEntry)con.getImplClasses().get("UpdateEntry");
+/* 286 */     this.con = con;
+/* 287 */     this.sqlStore = sqlStore;
+/*     */     
+/* 289 */     this.numArgs = sqlStore.getArgs();
+/* 290 */     this.attribs = sqlStore.getAttribs();
+/*     */     
+/* 292 */     this.cmd = sqlStore.getCommand();
+/* 293 */     this.cmds = sqlStore.getCmds();
+/* 294 */     this.argVals = new String[this.numArgs];
+/* 295 */     this.offset = sqlStore.getOffsetList();
+/* 296 */     this.argVals = new String[this.offset.size()];
+/* 297 */     this.where = sqlStore.getWhere();
+/* 298 */     this.scope = sqlStore.getScope();
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public Object executeQuery() throws SQLException {
+/* 306 */     return null;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public Object executeUpdate() throws SQLException {
+/* 314 */     return new Integer(this.ue.doUpdateEntryJldap(this));
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setValue(int pos, String value) throws SQLException {
+/* 321 */     if (pos < this.argVals.length) {
+/* 322 */       this.argVals[pos] = value;
+/*     */     } else {
+/*     */       
+/* 325 */       this.args[pos - this.argVals.length] = value;
+/*     */     } 
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public SqlStore getSqlStore() {
+/* 334 */     return this.sqlStore;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean getRetrieveDN() {
+/* 342 */     return false;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public boolean isUpdate() {
+/* 350 */     return true;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String[] getArgVals() {
+/* 357 */     return this.argVals;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public LinkedList getAttribs() {
+/* 364 */     return this.attribs;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public String getCmd() {
+/* 371 */     return this.cmd;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public int getNumArgs() {
+/* 380 */     return this.numArgs;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public LinkedList getCmds() {
+/* 388 */     return this.cmds;
+/*     */   }
+/*     */ 
+/*     */ 
+/*     */ 
+/*     */   
+/*     */   public void setCmds(LinkedList list) {
+/* 395 */     this.cmds = list;
+/*     */   }
+/*     */ }
 
-import java.sql.SQLException;
 
-import com.octetstring.jdbcLdap.jndi.JndiLdapConnection;
-import com.octetstring.jdbcLdap.sql.SqlStore;
-import com.octetstring.jdbcLdap.util.*;
-
-import java.util.*;
-
-import com.octetstring.jdbcLdap.jndi.*;
-
-/**
- * @author mlb
- *
- * To change the template for this generated type comment go to
- * Window&gt;Preferences&gt;Java&gt;Code Generation&gt;Code and Comments
+/* Location:              /Users/marcboorshtein/Downloads/jdbcLdap-1.0.0.jar!/com/octetstring/jdbcLdap/sql/statements/JdbcLdapUpdateEntry.class
+ * Java compiler version: 5 (49.0)
+ * JD-Core Version:       1.1.3
  */
-public class JdbcLdapUpdateEntry
-	extends JdbcLdapSqlAbs
-	implements JdbcLdapSql {
-		
-	/** Signifies an update entry */
-	public static final String UPDATE_ENTRY="update entry";
-		
-	/** Delete an attribute */
-	public static final String DELETE = "delete";
-
-	/** Add an attribute */
-	public static final String ADD = "add";
-	
-	/** replace an attribute */
-	public static final String REPLACE = "replace";
-	
-	/** determine conditions */
-	public static final String WHERE = " where ";
-	
-	/** determines our cmd */
-	public static final String DO = " do ";
-	
-	/** attributes */
-	public static final String SET = " set ";
-	
-	/** question mark */
-	public static final String QMARK = "?";
-	
-	/** A semicolon */
-	public static final String SEMI_COLON = ";";
-	
-	/** the command */
-	String cmd;
-	
-	
-	
-	/** list of attribs, either as <code>String</code> object or <code>Pair</code> objects */
-	LinkedList cmds;
-	
-	
-	
-	
-	
-	
-	
-	/** number of arguments */
-	int numArgs;
-	
-	/** SET vals */
-	String[] argVals;
-	
-	/** the sql store */
-	SqlStore sqlStore;
-	
-	/** List of offests */
-	ArrayList offset;
-	
-	
-	
-	
-	LinkedList attribs;
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#init(com.octetstring.jdbcLdap.jndi.JndiLdapConnection, java.lang.String)
-	 */
-	public void init(JndiLdapConnection con, String SQL) throws SQLException {
-		//first we will determine the dn
-		String attribName, attribValue,attr;
-		int paramcount = 0;
-		int whereIndex;
-		this.cmds = new LinkedList();
-		String dn,cmd, attribs;
-		ArrayList attribList;
-		boolean hasWhere = true;
-		int begin,end;
-		StringTokenizer toker;
-		String lsql = SQL.toLowerCase();
-		begin = lsql.indexOf(UPDATE_ENTRY) + UPDATE_ENTRY.length();
-		end = lsql.indexOf(DO);
-		dn = SQL.substring(begin,end).trim();
-		
-		if (con.getTableDefs().containsKey(dn)) {
-        	dn = ((TableDef) con.getTableDefs().get(dn)).getScopeBase();
-        }
-		
-		
-		where = null;
-		//Need to parse out the scope
-		int semi = dn.indexOf(SEMI_COLON); 
-		
-		if (semi != -1) {
-			String sscope = dn.substring(0,semi);
-			dn = dn.substring(semi + 1);
-			Integer iscope = (Integer) scopes.get(sscope);
-			if (iscope != null) {
-				this.scope = iscope.intValue();
-			}
-			else {
-				iscope = (Integer) scopes.get(con.getScope());
-				if (iscope == null) {
-					throw new SQLException("Invalid search scope : " + con.getScope());
-				}
-				this.scope = iscope.intValue();
-			}
-		}
-		else {
-			Integer iscope = (Integer) scopes.get(con.getScope());
-			if (iscope == null) {
-				throw new SQLException("Invalid search scope : " + con.getScope());
-			}
-			this.scope = iscope.intValue();//((Integer) scopes.get(con.getScope())).intValue();
-		}
-		
-		
-		
-		//System.out.println("dn : " + dn);
-		
-		//want to retrieve all updates
-		begin = end;
-		end = lsql.indexOf(WHERE);
-		if (end == -1) {
-			hasWhere = false;
-			end = lsql.length();
-		}
-		
-		whereIndex = end;
-		
-		String cmdSQL = SQL.substring(begin,end);
-		String lCmdSql = cmdSQL.toLowerCase();
-		
-		boolean ok = true;
-		begin = 0;
-		offset = new ArrayList();
-		int params = 0;
-		while (ok) {
-		  //determine the command
-		  //System.out.println("lCmdSql : " + lCmdSql);
-		  //System.out.println("begin : " + begin);
-		  begin = lCmdSql.indexOf(DO,begin) + DO.length();
-		  
-		  end = lCmdSql.indexOf(SET,begin);
-		
-		  cmd = cmdSQL.substring(begin,end).trim();
-		  //System.out.println("cmd : " + cmd);
-		  //get the attrib list/attrib-value pairs
-		  begin = lCmdSql.indexOf(SET,end) + SET.length();
-		  
-		  
-		  end = lCmdSql.indexOf(DO,begin);
-		  if (end == -1) {
-		  	ok = false;
-		  	end = lCmdSql.length();
-		  }
-		  
-		
-		  attribs = cmdSQL.substring(begin,end);
-		  //System.out.println("attribs : " + attribs );
-		  
-		  if (ok) {
-		  	begin  = end;
-		  }
-		  
-//		  retrieve attribs
-			
-			attribList = new ArrayList(5);
-			this.cmds.add(new UpdateSet(cmd,attribList));
-			if (cmd.equalsIgnoreCase(ADD) || cmd.equalsIgnoreCase(REPLACE)) {
-		
-				
-				LinkedList attribsExploded = explodeDN(attribs);
-				//toker = new StringTokenizer(attribs,",",false);
-				Iterator itoker = attribsExploded.iterator();
-				while (itoker.hasNext()) {
-					
-					attr = (String) itoker.next();
-					
-					attribName = attr.substring(0,attr.indexOf("="));
-					attribValue = attr.substring(attr.indexOf("=") + 1);
-			
-					if (attribValue.charAt(0) == '"' || attribValue.charAt(0) == '\'') {
-						attribValue = attribValue.substring(1,attribValue.length()-1);
-					}
-					
-					if (attribValue.trim().equals("?")) {
-						offset.add(new Integer(params++));
-					}
-			
-					attribList.add(new Pair(attribName.trim(),attribValue));
-					
-				}
-			}
-			else {
-		
-				//this.attribs = new LinkedList();
-	
-				toker = new StringTokenizer(attribs,",",false);
-				while (toker.hasMoreTokens()) {
-					attr = toker.nextToken();
-					if (attr.indexOf('=') != -1) {
-						attribName = attr.substring(0,attr.indexOf("="));
-						attribValue = attr.substring(attr.indexOf("=") + 1);
-						attribList.add(new Pair(attribName.trim(),attribValue.trim()));
-					} else {
-						attribList.add(attr.trim());
-					}
-				}
-			}	
-		}
-		
-		
-				
-		//if there is a where, get it
-		if (hasWhere) {
-			begin = whereIndex + WHERE.length();
-			where = con.nativeSQL(sqlArgsToLdap(SQL.substring(begin).trim()));
-		}
-		
-		//System.out.println("where : " + where);
-		
-		sqlStore = new SqlStore(SQL);
-		sqlStore.setDistinguishedName(dn);
-		
-		
-		
-		this.numArgs = offset.size();
-		
-		this.argVals = new String[numArgs];
-		this.from = dn;
-		sqlStore.setScope(scope);
-		
-		sqlStore.setCommand(this.cmd);
-		sqlStore.setArgs(this.numArgs);
-		sqlStore.setAttribs(this.attribs);
-		
-		sqlStore.setCmds(this.cmds);
-		sqlStore.setOffsetList(offset);
-		if (where == null || where.trim().length() == 0) {
-					where = "(objectClass=*)";
-				}
-			//System.out.println("where : " + where);
-		sqlStore.setWhere(where);
-		this.con = con;
-
-	}
-
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#init(com.octetstring.jdbcLdap.jndi.JndiLdapConnection, java.lang.String, com.octetstring.jdbcLdap.sql.SqlStore)
-	 */
-	public void init(JndiLdapConnection con, String SQL, SqlStore sqlStore)
-		throws SQLException {
-		this.con = con;
-		this.sqlStore = sqlStore;
-		
-		this.numArgs = sqlStore.getArgs();
-		this.attribs = sqlStore.getAttribs();
-		
-		this.cmd = sqlStore.getCommand();
-		this.cmds = sqlStore.getCmds();
-		this.argVals = new String[numArgs];
-		this.offset = sqlStore.getOffsetList();
-		this.argVals = new String[offset.size()];
-		this.where = sqlStore.getWhere();
-		this.scope = sqlStore.getScope();
-	}
-
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#executeQuery()
-	 */
-	public Object executeQuery() throws SQLException {
-		
-		return null;
-	}
-
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#executeUpdate()
-	 */
-	public Object executeUpdate() throws SQLException {
-		UpdateEntry ue = new UpdateEntry();
-		
-		return new Integer(ue.doUpdateEntryJldap(this));
-	}
-
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#setValue(int, java.lang.String)
-	 */
-	public void setValue(int pos, String value) throws SQLException {
-		if (pos < argVals.length) { 
-			this.argVals[pos] = value;
-		}
-		else {
-			this.args[pos - argVals.length] = value;
-		}
-
-	}
-
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#getSqlStore()
-	 */
-	public SqlStore getSqlStore() {
-		return this.sqlStore;
-	}
-
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#getRetrieveDN()
-	 */
-	public boolean getRetrieveDN() {
-		
-		return false;
-	}
-
-	/* (non-Javadoc)
-	 * @see com.octetstring.jdbcLdap.sql.statements.JdbcLdapSql#isUpdate()
-	 */
-	public boolean isUpdate() {
-		
-		return true;
-	}
-
-	/**
-	 * @return
-	 */
-	public String[] getArgVals() {
-		return argVals;
-	}
-
-	/**
-	 * @return
-	 */
-	public LinkedList getAttribs() {
-		return attribs;
-	}
-
-	/**
-	 * @return
-	 */
-	public String getCmd() {
-		return cmd;
-	}
-
-	
-
-	/**
-	 * @return
-	 */
-	public int getNumArgs() {
-		return numArgs;
-	}
-
-	
-	/**
-	 * @return
-	 */
-	public LinkedList getCmds() {
-		return cmds;
-	}
-
-	/**
-	 * @param list
-	 */
-	public void setCmds(LinkedList list) {
-		cmds = list;
-	}
-
-}
